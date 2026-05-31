@@ -1,0 +1,1414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Restudio Tables</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tiny5&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        :root {
+            --bg: #1e1e1e;
+            --surface: #252526;
+            --text: #e0e0e0;
+            --primary: #0078d4;
+            --border: #3c3c3c;
+            --hover: #2a2d2e;
+            --header-bg: #000000;
+            --cell-border: #404040;
+            --selection: #3a6ea5;
+            --warning: #d32f2f;
+            --toast-bg: #333333;
+        }
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .app-header {
+            background: var(--header-bg);
+            height: 52px;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 12px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .app-header img {
+            height: 32px;
+            width: auto;
+        }
+        .app-header .brand {
+            font-family: 'Tiny5', monospace;
+            font-weight: 400;
+            font-size: 22px;
+            color: #ffffff;
+        }
+        .version-badge {
+            background: #3c3c3c;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 10px;
+            margin-left: 8px;
+            color: #aaa;
+        }
+        .toolbar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 6px 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            overflow-x: auto;
+            flex-shrink: 0;
+            z-index: 100;
+        }
+        .tool-group {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            padding-right: 12px;
+            border-right: 1px solid var(--border);
+            margin-right: 8px;
+        }
+        .tool-group:last-child { border-right: none; }
+        .tool-btn {
+            background: transparent;
+            border: none;
+            color: #ddd;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            transition: 0.1s;
+            white-space: nowrap;
+            position: relative;
+        }
+        .tool-btn:hover { background: var(--hover); }
+        .tool-btn .material-icons { font-size: 18px; }
+        .tool-btn.active { background: var(--primary); color: white; }
+
+        /* Color Picker Styles */
+        .color-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            position: relative;
+        }
+        .color-picker-wrapper input[type="color"] {
+            width: 20px;
+            height: 20px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            background: transparent;
+            padding: 0;
+        }
+        .color-picker-wrapper input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        .color-picker-wrapper input[type="color"]::-webkit-color-swatch {
+            border: 1px solid #666;
+            border-radius: 3px;
+        }
+
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+        .sheet-wrapper {
+            flex: 1;
+            overflow: auto;
+            background: #1a1a1a;
+            position: relative;
+        }
+        .spreadsheet {
+            border-collapse: collapse;
+            min-width: 100%;
+            font-size: 13px;
+            background: var(--surface);
+        }
+        .spreadsheet th, .spreadsheet td {
+            border: 1px solid var(--cell-border);
+            min-width: 80px;
+            padding: 8px 12px;
+            text-align: left;
+            vertical-align: middle;
+            background: #2d2d2d;
+            color: #f0f0f0;
+        }
+        .spreadsheet th {
+            background: #252525;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            backdrop-filter: blur(4px);
+            cursor: pointer;
+            user-select: none;
+        }
+        .spreadsheet th:hover {
+            background: #3a3a3a;
+        }
+        .row-header {
+            background: #252525;
+            text-align: center;
+            font-weight: 500;
+            min-width: 45px;
+            width: 45px;
+        }
+        .spreadsheet td {
+            cursor: cell;
+            transition: background-color 0.1s, color 0.1s;
+        }
+        .spreadsheet td.selected {
+            outline: 2px solid var(--primary);
+            outline-offset: -1px;
+            z-index: 1;
+        }
+        .spreadsheet td.checkbox-cell {
+            text-align: center;
+        }
+        .checkbox-cell input {
+            transform: scale(1.2);
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
+        .link-cell a {
+            color: #4c9aff;
+            text-decoration: none;
+        }
+        .link-cell a:hover { text-decoration: underline; }
+        .word-wrap td {
+            white-space: normal;
+            word-break: break-word;
+        }
+        body.fullscreen .app-header,
+        body.fullscreen .toolbar,
+        body.fullscreen .status-bar {
+            display: none;
+        }
+        body.fullscreen .sheet-wrapper {
+            background: #1e1e1e;
+        }
+        .exit-fullscreen-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #d32f2f;
+            color: white;
+            border: none;
+            border-radius: 40px;
+            padding: 10px 20px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            z-index: 9999;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Inter', sans-serif;
+            transition: 0.2s;
+        }
+        .exit-fullscreen-btn:hover {
+            background: #b71c1c;
+            transform: scale(1.02);
+        }
+        body.fullscreen .exit-fullscreen-btn {
+            display: flex;
+        }
+        .status-bar {
+            background: #2d2d2d;
+            border-top: 1px solid var(--border);
+            padding: 6px 12px;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .filter-badge {
+            background: var(--primary);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+        }
+        .toast-message {
+            position: fixed;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--toast-bg);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: 13px;
+            z-index: 10000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            white-space: nowrap;
+            font-family: 'Inter', sans-serif;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .toast-message.show {
+            opacity: 1;
+        }
+        button {
+            background: var(--primary);
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #2d2d2d; }
+        ::-webkit-scrollbar-thumb { background: #555; border-radius: 4px; }
+        .selection-info {
+            font-size: 11px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-header">
+    <img src="https://i.postimg.cc/s2j0rzBZ/swrh-restudio.png" alt="Restudio Logo">
+    <span class="brand">Tables</span>
+</div>
+
+<div class="toolbar" id="toolbar">
+    <div class="tool-group">
+        <button class="tool-btn" id="newTableBtn"><span class="material-icons">table_view</span> New Table</button>
+        <button class="tool-btn" id="exportBtn"><span class="material-icons">save</span> Export .RETB</button>
+    </div>
+    <div class="tool-group">
+        <button class="tool-btn" id="undoBtn"><span class="material-icons">undo</span> Undo</button>
+        <button class="tool-btn" id="redoBtn"><span class="material-icons">redo</span> Redo</button>
+        <button class="tool-btn" id="cutBtn"><span class="material-icons">content_cut</span> Cut</button>
+        <button class="tool-btn" id="copyBtn"><span class="material-icons">content_copy</span> Copy</button>
+        <button class="tool-btn" id="pasteBtn"><span class="material-icons">content_paste</span> Paste</button>
+        <button class="tool-btn" id="deleteContentBtn"><span class="material-icons">delete_outline</span> Delete</button>
+    </div>
+    <div class="tool-group">
+        <button class="tool-btn" id="addRowBtn"><span class="material-icons">add_row</span> Add Row</button>
+        <button class="tool-btn" id="addColBtn"><span class="material-icons">add_column</span> Add Column</button>
+        <button class="tool-btn" id="delRowBtn"><span class="material-icons">remove_row</span> Delete Row</button>
+        <button class="tool-btn" id="delColBtn"><span class="material-icons">remove_column</span> Delete Column</button>
+        <button class="tool-btn" id="dupRowBtn"><span class="material-icons">content_copy</span> Duplicate Row</button>
+        <button class="tool-btn" id="dupColBtn"><span class="material-icons">content_copy</span> Duplicate Col</button>
+        <button class="tool-btn" id="resizeRowBtn"><span class="material-icons">height</span> Resize Row</button>
+        <button class="tool-btn" id="resizeColBtn"><span class="material-icons">width</span> Resize Col</button>
+        <button class="tool-btn" id="minimizeColBtn"><span class="material-icons">compress</span> Minimize COL</button>
+    </div>
+    <div class="tool-group">
+        <button class="tool-btn" id="sortAscBtn"><span class="material-icons">arrow_upward</span> Sort Asc</button>
+        <button class="tool-btn" id="sortDescBtn"><span class="material-icons">arrow_downward</span> Sort Desc</button>
+        <button class="tool-btn" id="filterBtn"><span class="material-icons">filter_alt</span> Filter</button>
+        <button class="tool-btn" id="clearFilterBtn"><span class="material-icons">filter_alt_off</span> Clear Filter</button>
+    </div>
+    <div class="tool-group">
+        <button class="tool-btn" id="mergeCellsBtn"><span class="material-icons">merge_type</span> Merge</button>
+        <button class="tool-btn" id="unmergeCellsBtn"><span class="material-icons">call_merge</span> Unmerge</button>
+        <button class="tool-btn" id="alignLeftBtn"><span class="material-icons">format_align_left</span></button>
+        <button class="tool-btn" id="alignCenterBtn"><span class="material-icons">format_align_center</span></button>
+        <button class="tool-btn" id="alignRightBtn"><span class="material-icons">format_align_right</span></button>
+    </div>
+    <div class="tool-group">
+        <button class="tool-btn" id="insertTextBtn"><span class="material-icons">text_fields</span> Text</button>
+        <button class="tool-btn" id="insertNumberBtn"><span class="material-icons">123</span> Number</button>
+        <button class="tool-btn" id="insertCheckboxBtn"><span class="material-icons">check_box</span> Checkbox</button>
+        <button class="tool-btn" id="insertDateBtn"><span class="material-icons">calendar_today</span> Date</button>
+        <button class="tool-btn" id="insertLinkBtn"><span class="material-icons">link</span> Link</button>
+    </div>
+    <div class="tool-group">
+        <div class="color-picker-wrapper">
+            <button class="tool-btn" id="cellColorBtn" title="Cell Background Color">
+                <span class="material-icons">format_color_fill</span>
+                <span style="font-size:11px;">Cell Color</span>
+            </button>
+            <input type="color" id="cellColorPicker" value="#2d2d2d" title="Select cell background color">
+        </div>
+        <div class="color-picker-wrapper">
+            <button class="tool-btn" id="textColorBtn" title="Text Color">
+                <span class="material-icons">format_color_text</span>
+                <span style="font-size:11px;">Text Color</span>
+            </button>
+            <input type="color" id="textColorPicker" value="#f0f0f0" title="Select text color">
+        </div>
+        <button class="tool-btn" id="clearColorBtn" title="Clear Cell & Text Colors">
+            <span class="material-icons">format_color_reset</span>
+            <span style="font-size:11px;">Clear Colors</span>
+        </button>
+    </div>
+    <div class="tool-group">
+        <button class="tool-btn" id="fullscreenBtn"><span class="material-icons">fullscreen</span> Fullscreen</button>
+        <button class="tool-btn" id="searchBtn"><span class="material-icons">search</span> Search</button>
+        <button class="tool-btn" id="wordWrapBtn"><span class="material-icons">wrap_text</span> Word Wrap</button>
+        <button class="tool-btn" id="rowNumberingBtn"><span class="material-icons">format_list_numbered</span> Row Numbers</button>
+    </div>
+</div>
+
+<div class="main-container">
+    <div class="sheet-wrapper" id="sheetWrapper">
+        <table class="spreadsheet" id="spreadsheet" cellspacing="0"></table>
+    </div>
+    <div class="status-bar" id="statusBar">
+        <span id="cellCoord">Ready</span>
+        <span id="filterStatus"></span>
+        <span id="selectionRange" class="selection-info"></span>
+        <span id="colorInfo" style="font-size:10px; color:#888;"></span>
+        <span id="performanceHint" style="font-size:10px; color:#666;"></span>
+    </div>
+</div>
+
+<button class="exit-fullscreen-btn" id="exitFullscreenBtn">
+    <span class="material-icons">fullscreen_exit</span> Exit Fullscreen
+</button>
+<div id="toastMsg" class="toast-message"></div>
+
+<script>
+    // ========== DATA MODEL ==========
+    let gridData = [];
+    let rowHeights = [];
+    let colWidths = [];
+    let merges = [];
+    let activeFilter = null;
+    let activeSort = null;
+    let rowNumberingEnabled = true;
+    let wordWrapEnabled = false;
+
+    // Color settings - each cell stores its own colors
+    let cellColors = []; // 2D array parallel to gridData
+
+    let selectedRow = 0, selectedCol = 0;
+    let selectionEndRow = 0, selectionEndCol = 0;
+    let isSelecting = false;
+
+    let historyStack = [];
+    let historyIndex = -1;
+    let clipboardData = null;
+
+    const DEFAULT_ROWS = 15;
+    const DEFAULT_COLS = 8;
+    const DEFAULT_ROW_HEIGHT = 32;
+    const DEFAULT_COL_WIDTH = 100;
+    const MAX_ROWS = 800;
+    const MAX_COLS = 80;
+
+    // Helper: Show toast message
+    function showToast(msg, isWarning = false) {
+        const toast = document.getElementById('toastMsg');
+        toast.textContent = msg;
+        toast.style.background = isWarning ? '#d32f2f' : '#333333';
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    function initEmptyGrid(rows, cols) {
+        let newGrid = [];
+        let newColors = [];
+        for(let i=0; i<rows; i++) {
+            newGrid[i] = [];
+            newColors[i] = [];
+            for(let j=0; j<cols; j++) {
+                newGrid[i][j] = { value: '', type: 'text', align: 'left' };
+                newColors[i][j] = null;
+            }
+        }
+        return { grid: newGrid, colors: newColors };
+    }
+
+    function resetTable(rows=DEFAULT_ROWS, cols=DEFAULT_COLS) {
+        rows = Math.min(rows, MAX_ROWS);
+        cols = Math.min(cols, MAX_COLS);
+        if (rows < 1) rows = 1;
+        if (cols < 1) cols = 1;
+
+        let result = initEmptyGrid(rows, cols);
+        gridData = result.grid;
+        cellColors = result.colors;
+        rowHeights = Array(rows).fill(DEFAULT_ROW_HEIGHT);
+        colWidths = Array(cols).fill(DEFAULT_COL_WIDTH);
+        merges = [];
+        activeFilter = null;
+        activeSort = null;
+        selectedRow = 0; selectedCol = 0;
+        selectionEndRow = 0; selectionEndCol = 0;
+        renderSheet();
+        saveToHistory();
+        updateStatus();
+        showToast(`New table created: ${rows} rows x ${cols} columns`);
+    }
+
+    function saveToHistory() {
+        const state = JSON.parse(JSON.stringify({
+            grid: gridData,
+            rowHeights,
+            colWidths,
+            merges,
+            cellColors: cellColors
+        }));
+        if (historyIndex < historyStack.length - 1) {
+            historyStack = historyStack.slice(0, historyIndex + 1);
+        }
+        historyStack.push(state);
+        historyIndex = historyStack.length - 1;
+        if (historyStack.length > 50) historyStack.shift();
+    }
+
+    function undo() {
+        if (historyIndex > 0) {
+            historyIndex--;
+            restoreState(historyStack[historyIndex]);
+            showToast("Undo done");
+        } else showToast("Nothing to undo", true);
+    }
+
+    function redo() {
+        if (historyIndex < historyStack.length - 1) {
+            historyIndex++;
+            restoreState(historyStack[historyIndex]);
+            showToast("Redo done");
+        } else showToast("Nothing to redo", true);
+    }
+
+    function restoreState(state) {
+        gridData = state.grid;
+        rowHeights = state.rowHeights;
+        colWidths = state.colWidths;
+        merges = state.merges;
+        cellColors = state.cellColors || [];
+        while (cellColors.length < gridData.length) {
+            cellColors.push(new Array(colWidths.length).fill(null));
+        }
+        for (let i = 0; i < cellColors.length; i++) {
+            while (cellColors[i].length < colWidths.length) {
+                cellColors[i].push(null);
+            }
+        }
+        activeFilter = null;
+        activeSort = null;
+        renderSheet();
+        updateStatus();
+    }
+
+    function isCellMerged(row, col) {
+        for (let m of merges) {
+            if (row >= m.r && row < m.r + m.rowspan && col >= m.c && col < m.c + m.colspan) {
+                return m;
+            }
+        }
+        return null;
+    }
+
+    function applyFilterAndSort() {
+        let rows = [...Array(gridData.length).keys()];
+        if (activeFilter) {
+            rows = rows.filter(rowIdx => {
+                let val = getCellRawValue(rowIdx, activeFilter.colIndex);
+                if (!val && val !== 0) return false;
+                return val.toString().toLowerCase().includes(activeFilter.condition.toLowerCase());
+            });
+        }
+        if (activeSort) {
+            rows.sort((a,b) => {
+                let valA = getCellRawValue(a, activeSort.col);
+                let valB = getCellRawValue(b, activeSort.col);
+                if (typeof valA === 'number' && typeof valB === 'number') {
+                    return activeSort.dir === 'asc' ? valA - valB : valB - valA;
+                }
+                let strA = String(valA || '').toLowerCase();
+                let strB = String(valB || '').toLowerCase();
+                return activeSort.dir === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
+            });
+        }
+        return rows;
+    }
+
+    function getCellRawValue(row, col) {
+        if (!gridData[row] || !gridData[row][col]) return '';
+        let cell = gridData[row][col];
+        if (cell.type === 'checkbox') return cell.value ? 'true' : 'false';
+        return cell.value;
+    }
+
+    function updateCellValue(row, col, newValue, newType = null) {
+        let old = gridData[row][col];
+        let type = newType || old.type;
+        let align = old.align || 'left';
+        let value = newValue;
+        if (type === 'number' && !isNaN(parseFloat(newValue))) value = parseFloat(newValue);
+        gridData[row][col] = { value: value, type: type, align: align };
+        saveToHistory();
+        renderSheet();
+    }
+
+    // Minimize column - like Resize Col but for minimizing
+    function minimizeColumn() {
+        if (selectedCol === undefined || selectedCol < 0) {
+            showToast("Please select a column first.", true);
+            return;
+        }
+        let currentWidth = colWidths[selectedCol];
+        let newW = prompt('Minimize column width (pixels):', currentWidth);
+        if (newW !== null && newW !== '') {
+            let parsedWidth = parseInt(newW);
+            if (isNaN(parsedWidth) || parsedWidth < 10) {
+                showToast("Width must be at least 10 pixels.", true);
+                return;
+            }
+            // Apply to all columns in selection range
+            let { minCol, maxCol } = getSelectedRange();
+            for (let c = minCol; c <= maxCol; c++) {
+                colWidths[c] = parsedWidth;
+            }
+            saveToHistory();
+            renderSheet();
+            
+            if (minCol === maxCol) {
+                let colLetter = String.fromCharCode(65 + (minCol % 26));
+                if (minCol >= 26) colLetter = String.fromCharCode(64 + Math.floor(minCol / 26)) + colLetter;
+                showToast(`Column ${colLetter} minimized to ${parsedWidth}px`);
+            } else {
+                let startLetter = String.fromCharCode(65 + (minCol % 26));
+                if (minCol >= 26) startLetter = String.fromCharCode(64 + Math.floor(minCol / 26)) + startLetter;
+                let endLetter = String.fromCharCode(65 + (maxCol % 26));
+                if (maxCol >= 26) endLetter = String.fromCharCode(64 + Math.floor(maxCol / 26)) + endLetter;
+                showToast(`Columns ${startLetter}-${endLetter} minimized to ${parsedWidth}px`);
+            }
+        }
+    }
+
+    // Apply cell background color to ALL selected cells
+    function applyCellColor(color) {
+        let { minRow, maxRow, minCol, maxCol } = getSelectedRange();
+        let count = 0;
+        for (let r = minRow; r <= maxRow; r++) {
+            for (let c = minCol; c <= maxCol; c++) {
+                if (gridData[r] && gridData[r][c]) {
+                    if (!cellColors[r][c]) {
+                        cellColors[r][c] = { bg: null, text: null };
+                    }
+                    cellColors[r][c].bg = color;
+                    count++;
+                }
+            }
+        }
+        saveToHistory();
+        renderSheet();
+        updateStatus();
+        showToast(`Cell color applied to ${count} cells: ${color}`);
+    }
+
+    // Apply text color to ALL selected cells
+    function applyTextColor(color) {
+        let { minRow, maxRow, minCol, maxCol } = getSelectedRange();
+        let count = 0;
+        for (let r = minRow; r <= maxRow; r++) {
+            for (let c = minCol; c <= maxCol; c++) {
+                if (gridData[r] && gridData[r][c]) {
+                    if (!cellColors[r][c]) {
+                        cellColors[r][c] = { bg: null, text: null };
+                    }
+                    cellColors[r][c].text = color;
+                    count++;
+                }
+            }
+        }
+        saveToHistory();
+        renderSheet();
+        updateStatus();
+        showToast(`Text color applied to ${count} cells: ${color}`);
+    }
+
+    // Clear colors from selected cells
+    function clearSelectedColors() {
+        let { minRow, maxRow, minCol, maxCol } = getSelectedRange();
+        let count = 0;
+        for (let r = minRow; r <= maxRow; r++) {
+            for (let c = minCol; c <= maxCol; c++) {
+                if (gridData[r] && gridData[r][c] && cellColors[r][c]) {
+                    cellColors[r][c] = null;
+                    count++;
+                }
+            }
+        }
+        saveToHistory();
+        renderSheet();
+        updateStatus();
+        showToast(`Colors cleared from ${count} cells`);
+    }
+
+    function getCellColor(row, col) {
+        if (cellColors[row] && cellColors[row][col]) {
+            return cellColors[row][col];
+        }
+        return null;
+    }
+
+    function getCellBgColor(row, col) {
+        let color = getCellColor(row, col);
+        return color ? color.bg : null;
+    }
+
+    function getCellTextColor(row, col) {
+        let color = getCellColor(row, col);
+        return color ? color.text : null;
+    }
+
+    // Merge function with warning
+    function mergeSelected() {
+        if (selectedRow === undefined || selectedCol === undefined) {
+            showToast("Please select cells first.", true);
+            return;
+        }
+        let minRow = Math.min(selectedRow, selectionEndRow);
+        let maxRow = Math.max(selectedRow, selectionEndRow);
+        let minCol = Math.min(selectedCol, selectionEndCol);
+        let maxCol = Math.max(selectedCol, selectionEndCol);
+
+        if (minRow === maxRow && minCol === maxCol) {
+            showToast("Select more than one cell to merge.", true);
+            return;
+        }
+
+        let confirmMerge = confirm("⚠️ Warning: Merging cells will keep only the content of the top-left cell. All other data in the selected range will be lost. Do you want to continue?");
+        if (!confirmMerge) return;
+
+        merges = merges.filter(m => {
+            let mEndRow = m.r + m.rowspan - 1;
+            let mEndCol = m.c + m.colspan - 1;
+            return !(m.r <= maxRow && mEndRow >= minRow && m.c <= maxCol && mEndCol >= minCol);
+        });
+
+        merges.push({ r: minRow, c: minCol, rowspan: maxRow - minRow + 1, colspan: maxCol - minCol + 1 });
+        let mainValue = gridData[minRow][minCol].value;
+        let mainType = gridData[minRow][minCol].type;
+        let mainAlign = gridData[minRow][minCol].align;
+        let mainColors = cellColors[minRow] && cellColors[minRow][minCol] ?
+            JSON.parse(JSON.stringify(cellColors[minRow][minCol])) : null;
+
+        for (let r = minRow; r <= maxRow; r++) {
+            for (let c = minCol; c <= maxCol; c++) {
+                if (!(r === minRow && c === minCol)) {
+                    gridData[r][c] = { value: '', type: 'text', align: 'left' };
+                    cellColors[r][c] = null;
+                }
+            }
+        }
+        gridData[minRow][minCol] = { value: mainValue, type: mainType, align: mainAlign };
+        cellColors[minRow][minCol] = mainColors;
+
+        saveToHistory();
+        renderSheet();
+        updateStatus();
+        showToast("Cells merged successfully.");
+    }
+
+    function unmergeSelected() {
+        if (selectedRow === undefined || selectedCol === undefined) {
+            showToast("Select a merged cell first.", true);
+            return;
+        }
+        let foundMerge = null;
+        for (let m of merges) {
+            if (selectedRow >= m.r && selectedRow < m.r + m.rowspan &&
+                selectedCol >= m.c && selectedCol < m.c + m.colspan) {
+                foundMerge = m;
+                break;
+            }
+        }
+        if (foundMerge) {
+            merges = merges.filter(m => m !== foundMerge);
+            let mainValue = gridData[foundMerge.r][foundMerge.c].value;
+            let mainType = gridData[foundMerge.r][foundMerge.c].type;
+            let mainColors = cellColors[foundMerge.r] && cellColors[foundMerge.r][foundMerge.c] ?
+                JSON.parse(JSON.stringify(cellColors[foundMerge.r][foundMerge.c])) : null;
+
+            for (let r = foundMerge.r; r < foundMerge.r + foundMerge.rowspan; r++) {
+                for (let c = foundMerge.c; c < foundMerge.c + foundMerge.colspan; c++) {
+                    if (r === foundMerge.r && c === foundMerge.c) {
+                        gridData[r][c] = { value: mainValue, type: mainType, align: 'left' };
+                        cellColors[r][c] = mainColors;
+                    } else {
+                        gridData[r][c] = { value: '', type: 'text', align: 'left' };
+                        cellColors[r][c] = null;
+                    }
+                }
+            }
+            saveToHistory();
+            renderSheet();
+            showToast("Unmerge completed.");
+        } else {
+            showToast("Selected cell is not merged.", true);
+        }
+    }
+
+    function getSelectedRange() {
+        return {
+            minRow: Math.min(selectedRow, selectionEndRow),
+            maxRow: Math.max(selectedRow, selectionEndRow),
+            minCol: Math.min(selectedCol, selectionEndCol),
+            maxCol: Math.max(selectedCol, selectionEndCol)
+        };
+    }
+
+    function applyToSelectedRange(callback) {
+        let { minRow, maxRow, minCol, maxCol } = getSelectedRange();
+        for (let r = minRow; r <= maxRow; r++) {
+            for (let c = minCol; c <= maxCol; c++) {
+                if (gridData[r] && gridData[r][c]) callback(r, c);
+            }
+        }
+        saveToHistory();
+        renderSheet();
+    }
+
+    function setAlignment(align) {
+        applyToSelectedRange((r,c) => gridData[r][c].align = align);
+        showToast(`Alignment set to ${align}`);
+    }
+
+    function deleteContent() {
+        if (confirm("Delete content of selected cells? This cannot be undone.")) {
+            applyToSelectedRange((r,c) => {
+                gridData[r][c].value = '';
+                gridData[r][c].type = 'text';
+                cellColors[r][c] = null;
+            });
+            showToast("Content deleted");
+        }
+    }
+
+    function copySelection() {
+        let { minRow, maxRow, minCol, maxCol } = getSelectedRange();
+        clipboardData = [];
+        for (let r = minRow; r <= maxRow; r++) {
+            let rowData = [];
+            for (let c = minCol; c <= maxCol; c++) {
+                rowData.push({
+                    cell: JSON.parse(JSON.stringify(gridData[r][c])),
+                    colors: cellColors[r] && cellColors[r][c] ?
+                        JSON.parse(JSON.stringify(cellColors[r][c])) : null
+                });
+            }
+            clipboardData.push(rowData);
+        }
+        let rowsCount = clipboardData.length;
+        let colsCount = clipboardData[0]?.length || 0;
+        showToast(`Copied ${rowsCount} x ${colsCount} cells`);
+    }
+
+    function cutSelection() {
+        copySelection();
+        deleteContent();
+    }
+
+    function pasteSelection() {
+        if (!clipboardData) {
+            showToast("No data to paste.", true);
+            return;
+        }
+        let { minRow, minCol } = getSelectedRange();
+        for (let i = 0; i < clipboardData.length && minRow + i < gridData.length; i++) {
+            for (let j = 0; j < clipboardData[0].length && minCol + j < colWidths.length; j++) {
+                let pasteItem = clipboardData[i][j];
+                gridData[minRow + i][minCol + j] = JSON.parse(JSON.stringify(pasteItem.cell));
+                cellColors[minRow + i][minCol + j] = pasteItem.colors ?
+                    JSON.parse(JSON.stringify(pasteItem.colors)) : null;
+            }
+        }
+        saveToHistory();
+        renderSheet();
+        showToast("Pasted");
+    }
+
+    function addRow() {
+        if (gridData.length >= MAX_ROWS) {
+            showToast(`Max rows limit (${MAX_ROWS}) reached.`, true);
+            return;
+        }
+        let newRow = [];
+        let newColorRow = [];
+        for (let j = 0; j < colWidths.length; j++) {
+            newRow.push({ value: '', type: 'text', align: 'left' });
+            newColorRow.push(null);
+        }
+        gridData.push(newRow);
+        cellColors.push(newColorRow);
+        rowHeights.push(DEFAULT_ROW_HEIGHT);
+        saveToHistory();
+        renderSheet();
+        showToast("Row added");
+    }
+
+    function addColumn() {
+        if (colWidths.length >= MAX_COLS) {
+            showToast(`Max columns limit (${MAX_COLS}) reached.`, true);
+            return;
+        }
+        for (let i = 0; i < gridData.length; i++) {
+            gridData[i].push({ value: '', type: 'text', align: 'left' });
+            cellColors[i].push(null);
+        }
+        colWidths.push(DEFAULT_COL_WIDTH);
+        saveToHistory();
+        renderSheet();
+        showToast("Column added");
+    }
+
+    function deleteRow() {
+        if (gridData.length <= 1) {
+            showToast("Cannot delete last row.", true);
+            return;
+        }
+        if (confirm("Delete selected row? This action cannot be undone.")) {
+            let { minRow } = getSelectedRange();
+            gridData.splice(minRow, 1);
+            cellColors.splice(minRow, 1);
+            rowHeights.splice(minRow, 1);
+            if (selectedRow >= gridData.length) selectedRow = gridData.length - 1;
+            if (selectionEndRow >= gridData.length) selectionEndRow = gridData.length - 1;
+            saveToHistory();
+            renderSheet();
+            showToast("Row deleted");
+        }
+    }
+
+    function deleteColumn() {
+        if (colWidths.length <= 1) {
+            showToast("Cannot delete last column.", true);
+            return;
+        }
+        if (confirm("Delete selected column? This action cannot be undone.")) {
+            let { minCol } = getSelectedRange();
+            for (let i = 0; i < gridData.length; i++) {
+                gridData[i].splice(minCol, 1);
+                cellColors[i].splice(minCol, 1);
+            }
+            colWidths.splice(minCol, 1);
+            if (selectedCol >= colWidths.length) selectedCol = colWidths.length - 1;
+            if (selectionEndCol >= colWidths.length) selectionEndCol = colWidths.length - 1;
+            saveToHistory();
+            renderSheet();
+            showToast("Column deleted");
+        }
+    }
+
+    function duplicateRow() {
+        let { minRow } = getSelectedRange();
+        let newRow = JSON.parse(JSON.stringify(gridData[minRow]));
+        let newColorRow = JSON.parse(JSON.stringify(cellColors[minRow]));
+        gridData.splice(minRow + 1, 0, newRow);
+        cellColors.splice(minRow + 1, 0, newColorRow);
+        rowHeights.splice(minRow + 1, 0, rowHeights[minRow]);
+        saveToHistory();
+        renderSheet();
+        showToast("Row duplicated");
+    }
+
+    function duplicateColumn() {
+        let { minCol } = getSelectedRange();
+        for (let i = 0; i < gridData.length; i++) {
+            gridData[i].splice(minCol + 1, 0, JSON.parse(JSON.stringify(gridData[i][minCol])));
+            cellColors[i].splice(minCol + 1, 0, cellColors[i][minCol] ?
+                JSON.parse(JSON.stringify(cellColors[i][minCol])) : null);
+        }
+        colWidths.splice(minCol + 1, 0, colWidths[minCol]);
+        saveToHistory();
+        renderSheet();
+        showToast("Column duplicated");
+    }
+
+    function resizeRow() {
+        let newH = prompt('Row height (pixels):', rowHeights[selectedRow]);
+        if (newH) {
+            rowHeights[selectedRow] = parseInt(newH);
+            renderSheet();
+            saveToHistory();
+        }
+    }
+
+    function resizeColumn() {
+        let newW = prompt('Column width (pixels):', colWidths[selectedCol]);
+        if (newW) {
+            colWidths[selectedCol] = parseInt(newW);
+            renderSheet();
+            saveToHistory();
+        }
+    }
+
+    function sortColumn(dir) {
+        if (selectedCol !== undefined) {
+            if (merges.length > 0 && !confirm("Sorting will clear all merged cells due to technical limitations. Continue?")) return;
+            activeSort = { col: selectedCol, dir: dir };
+            activeFilter = null;
+            if (merges.length > 0) merges = [];
+            renderSheet();
+            saveToHistory();
+            showToast(`Sorted ${dir === 'asc' ? 'Ascending' : 'Descending'}`);
+        }
+    }
+
+    function filterColumn() {
+        let cond = prompt('Filter text (cells containing):', '');
+        if (cond !== null && cond !== '') {
+            if (merges.length > 0 && !confirm("Filtering will clear all merged cells. Continue?")) return;
+            activeFilter = { colIndex: selectedCol, condition: cond };
+            activeSort = null;
+            if (merges.length > 0) merges = [];
+            renderSheet();
+            updateStatus();
+            saveToHistory();
+            showToast(`Filter applied: "${cond}"`);
+        }
+    }
+
+    function clearFilter() {
+        activeFilter = null;
+        activeSort = null;
+        if (merges.length > 0) {
+            merges = [];
+        }
+        renderSheet();
+        updateStatus();
+        saveToHistory();
+        showToast("Filter cleared");
+    }
+
+    function updateStatus() {
+        document.getElementById('filterStatus').innerHTML = activeFilter ? `<span class="filter-badge">Filter: ${activeFilter.condition}</span>` : '';
+        let { minRow, maxRow, minCol, maxCol } = getSelectedRange();
+        let colLetter = String.fromCharCode(65 + (selectedCol % 26));
+        if (selectedCol >= 26) colLetter = String.fromCharCode(64 + Math.floor(selectedCol / 26)) + colLetter;
+        document.getElementById('cellCoord').innerHTML = `Cell: ${colLetter}${selectedRow + 1}`;
+        if (minRow !== maxRow || minCol !== maxCol) {
+            let count = (maxRow - minRow + 1) * (maxCol - minCol + 1);
+            document.getElementById('selectionRange').innerHTML = `Selected: ${count} cells`;
+        } else {
+            document.getElementById('selectionRange').innerHTML = '';
+        }
+
+        // Show color info
+        let cellColor = getCellBgColor(selectedRow, selectedCol);
+        let textColor = getCellTextColor(selectedRow, selectedCol);
+        let colorInfoText = '';
+        if (cellColor) colorInfoText += `BG: ${cellColor} `;
+        if (textColor) colorInfoText += `Text: ${textColor}`;
+        document.getElementById('colorInfo').innerHTML = colorInfoText;
+
+        let totalCells = gridData.length * colWidths.length;
+        document.getElementById('performanceHint').innerHTML = `${gridData.length}x${colWidths.length} (${totalCells} cells)`;
+    }
+
+    function insertIntoSelected(type, defaultValue = '') {
+        let { minRow, minCol } = getSelectedRange();
+        if (type === 'checkbox') {
+            gridData[minRow][minCol] = { value: false, type: 'checkbox', align: 'left' };
+        } else if (type === 'date') {
+            gridData[minRow][minCol] = { value: new Date().toISOString().slice(0, 10), type: 'date', align: 'left' };
+        } else if (type === 'number') {
+            let val = prompt('Enter a number:', '0');
+            if (val !== null) gridData[minRow][minCol] = { value: parseFloat(val) || 0, type: 'number', align: 'left' };
+        } else if (type === 'link') {
+            let url = prompt('Enter link (URL):', 'https://');
+            if (url) gridData[minRow][minCol] = { value: url, type: 'link', align: 'left' };
+        } else {
+            let val = prompt('Enter text:', '');
+            if (val !== null) gridData[minRow][minCol] = { value: val, type: 'text', align: 'left' };
+        }
+        saveToHistory();
+        renderSheet();
+    }
+
+    function searchText() {
+        let query = prompt('Search for:', '');
+        if (!query) return;
+        let results = [];
+        for (let r = 0; r < gridData.length; r++) {
+            for (let c = 0; c < colWidths.length; c++) {
+                let val = gridData[r][c].value;
+                if (val && val.toString().toLowerCase().includes(query.toLowerCase())) {
+                    results.push([r, c]);
+                }
+            }
+        }
+        if (results.length) {
+            let [r, c] = results[0];
+            selectedRow = r; selectedCol = c;
+            selectionEndRow = r; selectionEndCol = c;
+            renderSheet();
+            showToast(`Found ${results.length} result(s).`);
+        } else {
+            showToast('No results found.', true);
+        }
+    }
+
+    function toggleFullscreen() {
+        document.body.classList.toggle('fullscreen');
+    }
+
+    function toggleWordWrap() {
+        wordWrapEnabled = !wordWrapEnabled;
+        renderSheet();
+        document.getElementById('wordWrapBtn').classList.toggle('active', wordWrapEnabled);
+        showToast(wordWrapEnabled ? "Word wrap ON" : "Word wrap OFF");
+    }
+
+    function toggleRowNumbering() {
+        rowNumberingEnabled = !rowNumberingEnabled;
+        renderSheet();
+        document.getElementById('rowNumberingBtn').classList.toggle('active', rowNumberingEnabled);
+    }
+
+    function exportRETB() {
+        let exportData = {
+            version: 'RESTUDIO_TABLE_V2',
+            grid: gridData,
+            rowHeights,
+            colWidths,
+            merges,
+            cellColors: cellColors
+        };
+        let blob = new Blob([JSON.stringify(exportData)], { type: 'application/json' });
+        let a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `table_${new Date().toISOString().slice(0,19)}.retb`;
+        a.click();
+        URL.revokeObjectURL(blob);
+        showToast('Export successful.');
+    }
+
+    function importRETB(file) {
+        let reader = new FileReader();
+        reader.onload = e => {
+            try {
+                let data = JSON.parse(e.target.result);
+                if (data.grid) gridData = data.grid;
+                if (data.rowHeights) rowHeights = data.rowHeights;
+                if (data.colWidths) colWidths = data.colWidths;
+                if (data.merges) merges = data.merges;
+                if (data.cellColors) {
+                    cellColors = data.cellColors;
+                } else {
+                    cellColors = [];
+                    for (let i = 0; i < gridData.length; i++) {
+                        cellColors[i] = new Array(colWidths.length).fill(null);
+                    }
+                }
+                while (cellColors.length < gridData.length) {
+                    cellColors.push(new Array(colWidths.length).fill(null));
+                }
+                for (let i = 0; i < cellColors.length; i++) {
+                    while (cellColors[i].length < colWidths.length) {
+                        cellColors[i].push(null);
+                    }
+                }
+                renderSheet();
+                saveToHistory();
+                showToast('Import successful.');
+            } catch(err) {
+                showToast('Error: Invalid file.', true);
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function newTable() {
+        let hasData = gridData.some(row => row.some(cell => cell.value !== '' && cell.value !== null && cell.value !== false));
+        if (hasData && !confirm("Create a new table? All current data will be lost.")) return;
+        let rows = parseInt(prompt(`Number of rows (max ${MAX_ROWS}):`, DEFAULT_ROWS) || DEFAULT_ROWS);
+        let cols = parseInt(prompt(`Number of columns (max ${MAX_COLS}):`, DEFAULT_COLS) || DEFAULT_COLS);
+        if (rows > MAX_ROWS) rows = MAX_ROWS;
+        if (cols > MAX_COLS) cols = MAX_COLS;
+        resetTable(rows, cols);
+    }
+
+    function renderSheet() {
+        const table = document.getElementById('spreadsheet');
+        table.innerHTML = '';
+        let filteredRows = applyFilterAndSort();
+        const thead = document.createElement('thead');
+        let headerRow = document.createElement('tr');
+
+        if (rowNumberingEnabled) {
+            let th = document.createElement('th');
+            th.innerText = '#';
+            th.classList.add('row-header');
+            th.style.width = '50px';
+            headerRow.appendChild(th);
+        }
+        for (let c = 0; c < colWidths.length; c++) {
+            let th = document.createElement('th');
+            let colLetter = String.fromCharCode(65 + (c % 26));
+            if (c >= 26) colLetter = String.fromCharCode(64 + Math.floor(c / 26)) + colLetter;
+            th.innerText = colLetter;
+            th.style.width = colWidths[c] + 'px';
+            th.setAttribute('data-col', c);
+            headerRow.appendChild(th);
+        }
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        for (let idx = 0; idx < filteredRows.length; idx++) {
+            let r = filteredRows[idx];
+            let tr = document.createElement('tr');
+            tr.style.height = rowHeights[r] + 'px';
+
+            if (rowNumberingEnabled) {
+                let tdNum = document.createElement('td');
+                tdNum.innerText = r + 1;
+                tdNum.classList.add('row-header');
+                tdNum.style.backgroundColor = '#252525';
+                tdNum.style.textAlign = 'center';
+                tdNum.style.color = '#f0f0f0';
+                tr.appendChild(tdNum);
+            }
+
+            for (let c = 0; c < colWidths.length; c++) {
+                let merge = isCellMerged(r, c);
+                if (merge && !(merge.r === r && merge.c === c)) continue;
+                let td = document.createElement('td');
+                if (merge) {
+                    if (merge.rowspan > 1) td.rowSpan = merge.rowspan;
+                    if (merge.colspan > 1) td.colSpan = merge.colspan;
+                }
+                td.setAttribute('data-row', r);
+                td.setAttribute('data-col', c);
+                let cell = gridData[r][c];
+                td.style.textAlign = cell.align || 'left';
+                if (wordWrapEnabled) td.style.whiteSpace = 'normal';
+                else td.style.whiteSpace = 'nowrap';
+
+                // Check if this cell is selected
+                let isSelected = (r >= Math.min(selectedRow, selectionEndRow) &&
+                                  r <= Math.max(selectedRow, selectionEndRow) &&
+                                  c >= Math.min(selectedCol, selectionEndCol) &&
+                                  c <= Math.max(selectedCol, selectionEndCol));
+
+                // Apply cell background color
+                let cellBgColor = getCellBgColor(r, c);
+                let cellTextColor = getCellTextColor(r, c);
+
+                if (isSelected) {
+                    if (cellBgColor) {
+                        td.style.backgroundColor = cellBgColor;
+                        td.style.boxShadow = 'inset 0 0 0 1000px rgba(58, 110, 165, 0.5)';
+                    } else {
+                        td.style.backgroundColor = 'var(--selection)';
+                        td.style.boxShadow = 'none';
+                    }
+                    td.style.outline = '2px solid var(--primary)';
+                    td.style.outlineOffset = '-1px';
+                    td.classList.add('selected');
+                    td.style.color = cellTextColor || '#ffffff';
+                } else {
+                    td.style.backgroundColor = cellBgColor || '#2d2d2d';
+                    td.style.color = cellTextColor || '#f0f0f0';
+                    td.style.outline = 'none';
+                    td.style.boxShadow = 'none';
+                }
+
+                if (cell.type === 'checkbox') {
+                    td.classList.add('checkbox-cell');
+                    let chk = document.createElement('input');
+                    chk.type = 'checkbox';
+                    chk.checked = cell.value === true || cell.value === 'true';
+                    chk.addEventListener('change', (e) => {
+                        e.stopPropagation();
+                        updateCellValue(r, c, chk.checked, 'checkbox');
+                    });
+                    td.appendChild(chk);
+                } else if (cell.type === 'link') {
+                    td.classList.add('link-cell');
+                    let link = document.createElement('a');
+                    link.href = cell.value || '#';
+                    link.target = '_blank';
+                    link.innerText = cell.value || 'Link';
+                    link.onclick = (e) => e.stopPropagation();
+                    if (cellTextColor) {
+                        link.style.color = cellTextColor;
+                    }
+                    td.appendChild(link);
+                } else {
+                    td.innerText = cell.value !== undefined && cell.value !== null ? cell.value : '';
+                }
+
+                tr.appendChild(td);
+            }
+            tbody.appendChild(tr);
+        }
+        table.appendChild(tbody);
+        attachCellEvents();
+        updateStatus();
+    }
+
+    function attachCellEvents() {
+        document.querySelectorAll('#spreadsheet tbody td').forEach(td => {
+            let row = parseInt(td.getAttribute('data-row'));
+            let col = parseInt(td.getAttribute('data-col'));
+            if (isNaN(row)) return;
+            td.onmousedown = (e) => {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'A') return;
+                e.preventDefault();
+                selectedRow = row;
+                selectedCol = col;
+                selectionEndRow = row;
+                selectionEndCol = col;
+                isSelecting = true;
+                renderSheet();
+                updateStatus();
+            };
+            td.onmouseenter = () => {
+                if (isSelecting) {
+                    selectionEndRow = row;
+                    selectionEndCol = col;
+                    renderSheet();
+                    updateStatus();
+                }
+            };
+            td.ondblclick = (e) => {
+                if (gridData[row][col].type === 'checkbox') return;
+                let currVal = gridData[row][col].value;
+                let newVal = prompt('Edit cell value:', currVal);
+                if (newVal !== null) updateCellValue(row, col, newVal, gridData[row][col].type);
+            };
+        });
+        document.body.onmouseup = () => { isSelecting = false; updateStatus(); };
+        document.querySelectorAll('#spreadsheet th').forEach(th => {
+            let col = parseInt(th.getAttribute('data-col'));
+            if (!isNaN(col)) {
+                th.onclick = (e) => {
+                    e.stopPropagation();
+                    selectedRow = 0;
+                    selectedCol = col;
+                    selectionEndRow = gridData.length - 1;
+                    selectionEndCol = col;
+                    renderSheet();
+                    updateStatus();
+                };
+            }
+        });
+    }
+
+    function init() {
+        resetTable(12, 7);
+        gridData[0][0] = { value: 'Product', type: 'text', align: 'center' };
+        gridData[0][1] = { value: 'Quantity', type: 'text', align: 'center' };
+        gridData[0][2] = { value: 'Price', type: 'text', align: 'center' };
+        gridData[1][0] = { value: 'Apples', type: 'text', align: 'left' };
+        gridData[1][1] = { value: 50, type: 'number', align: 'right' };
+        gridData[1][2] = { value: 2.5, type: 'number', align: 'right' };
+        gridData[2][0] = { value: 'Oranges', type: 'text', align: 'left' };
+        gridData[2][1] = { value: 30, type: 'number', align: 'right' };
+        gridData[2][2] = { value: 3.0, type: 'number', align: 'right' };
+        gridData[3][0] = { value: 'Bananas', type: 'text', align: 'left' };
+        gridData[3][1] = { value: 20, type: 'number', align: 'right' };
+        gridData[3][2] = { value: 1.8, type: 'number', align: 'right' };
+        renderSheet();
+
+        // Buttons
+        document.getElementById('newTableBtn').onclick = newTable;
+        document.getElementById('exportBtn').onclick = exportRETB;
+        document.getElementById('undoBtn').onclick = undo;
+        document.getElementById('redoBtn').onclick = redo;
+        document.getElementById('cutBtn').onclick = cutSelection;
+        document.getElementById('copyBtn').onclick = copySelection;
+        document.getElementById('pasteBtn').onclick = pasteSelection;
+        document.getElementById('deleteContentBtn').onclick = deleteContent;
+        document.getElementById('addRowBtn').onclick = addRow;
+        document.getElementById('addColBtn').onclick = addColumn;
+        document.getElementById('delRowBtn').onclick = deleteRow;
+        document.getElementById('delColBtn').onclick = deleteColumn;
+        document.getElementById('dupRowBtn').onclick = duplicateRow;
+        document.getElementById('dupColBtn').onclick = duplicateColumn;
+        document.getElementById('resizeRowBtn').onclick = resizeRow;
+        document.getElementById('resizeColBtn').onclick = resizeColumn;
+        document.getElementById('minimizeColBtn').onclick = minimizeColumn;
+        document.getElementById('sortAscBtn').onclick = () => sortColumn('asc');
+        document.getElementById('sortDescBtn').onclick = () => sortColumn('desc');
+        document.getElementById('filterBtn').onclick = filterColumn;
+        document.getElementById('clearFilterBtn').onclick = clearFilter;
+        document.getElementById('mergeCellsBtn').onclick = mergeSelected;
+        document.getElementById('unmergeCellsBtn').onclick = unmergeSelected;
+        document.getElementById('alignLeftBtn').onclick = () => setAlignment('left');
+        document.getElementById('alignCenterBtn').onclick = () => setAlignment('center');
+        document.getElementById('alignRightBtn').onclick = () => setAlignment('right');
+        document.getElementById('insertTextBtn').onclick = () => insertIntoSelected('text');
+        document.getElementById('insertNumberBtn').onclick = () => insertIntoSelected('number');
+        document.getElementById('insertCheckboxBtn').onclick = () => insertIntoSelected('checkbox');
+        document.getElementById('insertDateBtn').onclick = () => insertIntoSelected('date');
+        document.getElementById('insertLinkBtn').onclick = () => insertIntoSelected('link');
+        document.getElementById('fullscreenBtn').onclick = toggleFullscreen;
+        document.getElementById('exitFullscreenBtn').onclick = toggleFullscreen;
+        document.getElementById('searchBtn').onclick = searchText;
+        document.getElementById('wordWrapBtn').onclick = toggleWordWrap;
+        document.getElementById('rowNumberingBtn').onclick = toggleRowNumbering;
+        document.getElementById('rowNumberingBtn').classList.add('active');
+
+        // Cell Color Picker
+        document.getElementById('cellColorPicker').oninput = function() {
+            applyCellColor(this.value);
+        };
+        document.getElementById('cellColorPicker').onchange = function() {
+            applyCellColor(this.value);
+        };
+        document.getElementById('cellColorBtn').onclick = function() {
+            document.getElementById('cellColorPicker').click();
+        };
+
+        // Text Color Picker
+        document.getElementById('textColorPicker').oninput = function() {
+            applyTextColor(this.value);
+        };
+        document.getElementById('textColorPicker').onchange = function() {
+            applyTextColor(this.value);
+        };
+        document.getElementById('textColorBtn').onclick = function() {
+            document.getElementById('textColorPicker').click();
+        };
+
+        // Clear Colors Button
+        document.getElementById('clearColorBtn').onclick = clearSelectedColors;
+
+        let importInput = document.createElement('input');
+        importInput.type = 'file';
+        importInput.accept = '.retb';
+        importInput.style.display = 'none';
+        document.body.appendChild(importInput);
+        importInput.onchange = () => { if(importInput.files[0]) importRETB(importInput.files[0]); importInput.value = ''; };
+        let fakeImportBtn = document.createElement('button');
+        fakeImportBtn.className = 'tool-btn';
+        fakeImportBtn.innerHTML = '<span class="material-icons">upload</span> Import .RETB';
+        fakeImportBtn.onclick = () => importInput.click();
+        document.querySelector('.tool-group:first-child').appendChild(fakeImportBtn);
+
+        showToast("Welcome to Restudio Tables!");
+    }
+    init();
+</script>
+</body>
+</html>
