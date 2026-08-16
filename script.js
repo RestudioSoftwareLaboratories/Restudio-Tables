@@ -5,7 +5,6 @@ function sanitizeText(text) {
     if (text === null || text === undefined) return '';
     if (typeof text !== 'string') return String(text);
     
-    // إزالة HTML tags والسماح فقط بالنص الآمن
     const map = {
         '&': '&amp;',
         '<': '&lt;',
@@ -24,7 +23,6 @@ function sanitizeText(text) {
 // التحقق من صحة النص (منع الأكواد الضارة)
 function isValidText(text) {
     if (typeof text !== 'string') return false;
-    // منع الـ JavaScript URLs والـ event handlers
     const dangerousPatterns = [
         /javascript:/i,
         /on\w+\s*=/i,
@@ -40,69 +38,59 @@ function isValidText(text) {
 
 // 2. التحقق من صحة الملفات المستوردة
 function validateRETBFile(data) {
-    // التحقق من وجود البيانات الأساسية
     if (!data || typeof data !== 'object') {
         throw new Error('Invalid file format: Data is not an object');
     }
     
-    // التحقق من وجود grid
-    if (!data.grid || !Array.isArray(data.grid)) {
-        throw new Error('Invalid file: Missing or invalid grid data');
-    }
-    
-    // التحقق من حجم البيانات (منع الملفات الكبيرة جداً)
     const MAX_FILE_SIZE_MB = 10;
     const jsonString = JSON.stringify(data);
     const sizeInMB = new Blob([jsonString]).size / (1024 * 1024);
     if (sizeInMB > MAX_FILE_SIZE_MB) {
-        throw new Error(`File too large: ${sizeInMB.toFixed(2)}MB (max ${MAX_FILE_SIZE_MB}MB)`);
+        throw new Error('File too large: ' + sizeInMB.toFixed(2) + 'MB (max ' + MAX_FILE_SIZE_MB + 'MB)');
     }
     
-    // التحقق من عدد الصفوف والأعمدة
+    if (!data.grid || !Array.isArray(data.grid)) {
+        throw new Error('Invalid file: Missing or invalid grid data');
+    }
+    
     const MAX_ROWS_FILE = 1000;
     const MAX_COLS_FILE = 100;
     if (data.grid.length > MAX_ROWS_FILE) {
-        throw new Error(`Too many rows: ${data.grid.length} (max ${MAX_ROWS_FILE})`);
+        throw new Error('Too many rows: ' + data.grid.length + ' (max ' + MAX_ROWS_FILE + ')');
     }
     if (data.grid.length > 0 && data.grid[0].length > MAX_COLS_FILE) {
-        throw new Error(`Too many columns: ${data.grid[0].length} (max ${MAX_COLS_FILE})`);
+        throw new Error('Too many columns: ' + data.grid[0].length + ' (max ' + MAX_COLS_FILE + ')');
     }
     
-    // التحقق من صحة كل خلية
-    for (let r = 0; r < data.grid.length; r++) {
+    for (var r = 0; r < data.grid.length; r++) {
         if (!Array.isArray(data.grid[r])) {
-            throw new Error(`Invalid row ${r}: Not an array`);
+            throw new Error('Invalid row ' + r + ': Not an array');
         }
-        for (let c = 0; c < data.grid[r].length; c++) {
-            const cell = data.grid[r][c];
+        for (var c = 0; c < data.grid[r].length; c++) {
+            var cell = data.grid[r][c];
             if (!cell || typeof cell !== 'object') {
-                throw new Error(`Invalid cell at [${r}][${c}]: Not an object`);
+                throw new Error('Invalid cell at [' + r + '][' + c + ']: Not an object');
             }
-            // التحقق من وجود value
             if (cell.value !== undefined && typeof cell.value === 'string') {
-                // تطهير النصوص في الملف المستورد
                 data.grid[r][c].value = sanitizeText(cell.value);
-                // التحقق من صحة النص
                 if (!isValidText(cell.value)) {
-                    throw new Error(`Suspicious content detected in cell [${r}][${c}]`);
+                    throw new Error('Suspicious content detected in cell [' + r + '][' + c + ']');
                 }
             }
-            // التحقق من type مسموح به
-            const allowedTypes = ['text', 'number', 'checkbox', 'date', 'link'];
-            if (cell.type && !allowedTypes.includes(cell.type)) {
-                throw new Error(`Invalid cell type at [${r}][${c}]: ${cell.type}`);
+            var allowedTypes = ['text', 'number', 'checkbox', 'date', 'link'];
+            if (cell.type && allowedTypes.indexOf(cell.type) === -1) {
+                throw new Error('Invalid cell type at [' + r + '][' + c + ']: ' + cell.type);
             }
         }
     }
     
-    // التحقق من colWidths
     if (data.colWidths && !Array.isArray(data.colWidths)) {
         throw new Error('Invalid colWidths: Not an array');
     }
     if (data.colWidths) {
-        for (let w of data.colWidths) {
-            if (typeof w !== 'number' || w < 20 || w > 500) {
-                throw new Error(`Invalid column width: ${w} (must be between 20-500)`);
+        for (var w = 0; w < data.colWidths.length; w++) {
+            if (typeof data.colWidths[w] !== 'number' || data.colWidths[w] < 20 || data.colWidths[w] > 500) {
+                throw new Error('Invalid column width: ' + data.colWidths[w] + ' (must be between 20-500)');
             }
         }
     }
@@ -113,11 +101,11 @@ function validateRETBFile(data) {
 // 3. التحقق من الحدود (Boundary Checking)
 function validateCellAccess(row, col) {
     if (row < 0 || row >= gridData.length) {
-        console.warn(`Invalid row access: ${row}`);
+        console.warn('Invalid row access: ' + row);
         return false;
     }
     if (col < 0 || col >= colWidths.length) {
-        console.warn(`Invalid column access: ${col}`);
+        console.warn('Invalid column access: ' + col);
         return false;
     }
     return true;
@@ -139,40 +127,39 @@ function setCellSafe(row, col, value) {
 }
 
 // ========== DATA MODEL ==========
-let gridData = [];
-let rowHeights = [];
-let colWidths = [];
-let merges = [];
-let activeFilter = null;
-let activeSort = null;
-let rowNumberingEnabled = true;
-let wordWrapEnabled = false;
+var gridData = [];
+var rowHeights = [];
+var colWidths = [];
+var merges = [];
+var activeFilter = null;
+var activeSort = null;
+var rowNumberingEnabled = true;
+var wordWrapEnabled = false;
 
-// Color settings - each cell stores its own colors
-let cellColors = []; // 2D array parallel to gridData
+var cellColors = [];
 
-let selectedRow = 0, selectedCol = 0;
-let selectionEndRow = 0, selectionEndCol = 0;
-let isSelecting = false;
+var selectedRow = 0, selectedCol = 0;
+var selectionEndRow = 0, selectionEndCol = 0;
+var isSelecting = false;
 
-let historyStack = [];
-let historyIndex = -1;
-let clipboardData = null;
+var historyStack = [];
+var historyIndex = -1;
+var clipboardData = null;
 
-const DEFAULT_ROWS = 15;
-const DEFAULT_COLS = 8;
-const DEFAULT_ROW_HEIGHT = 32;
-const DEFAULT_COL_WIDTH = 100;
-const MAX_ROWS = 800;
-const MAX_COLS = 80;
+var DEFAULT_ROWS = 15;
+var DEFAULT_COLS = 8;
+var DEFAULT_ROW_HEIGHT = 32;
+var DEFAULT_COL_WIDTH = 100;
+var MAX_ROWS = 800;
+var MAX_COLS = 80;
 
 function initEmptyGrid(rows, cols) {
-    let newGrid = [];
-    let newColors = [];
-    for(let i=0; i<rows; i++) {
+    var newGrid = [];
+    var newColors = [];
+    for(var i=0; i<rows; i++) {
         newGrid[i] = [];
         newColors[i] = [];
-        for(let j=0; j<cols; j++) {
+        for(var j=0; j<cols; j++) {
             newGrid[i][j] = { value: '', type: 'text', align: 'left' };
             newColors[i][j] = null;
         }
@@ -180,13 +167,15 @@ function initEmptyGrid(rows, cols) {
     return { grid: newGrid, colors: newColors };
 }
 
-function resetTable(rows=DEFAULT_ROWS, cols=DEFAULT_COLS) {
+function resetTable(rows, cols) {
+    if (rows === undefined) rows = DEFAULT_ROWS;
+    if (cols === undefined) cols = DEFAULT_COLS;
     rows = Math.min(rows, MAX_ROWS);
     cols = Math.min(cols, MAX_COLS);
     if (rows < 1) rows = 1;
     if (cols < 1) cols = 1;
 
-    let result = initEmptyGrid(rows, cols);
+    var result = initEmptyGrid(rows, cols);
     gridData = result.grid;
     cellColors = result.colors;
     rowHeights = Array(rows).fill(DEFAULT_ROW_HEIGHT);
@@ -202,11 +191,11 @@ function resetTable(rows=DEFAULT_ROWS, cols=DEFAULT_COLS) {
 }
 
 function saveToHistory() {
-    const state = JSON.parse(JSON.stringify({
+    var state = JSON.parse(JSON.stringify({
         grid: gridData,
-        rowHeights,
-        colWidths,
-        merges,
+        rowHeights: rowHeights,
+        colWidths: colWidths,
+        merges: merges,
         cellColors: cellColors
     }));
     if (historyIndex < historyStack.length - 1) {
@@ -240,7 +229,7 @@ function restoreState(state) {
     while (cellColors.length < gridData.length) {
         cellColors.push(new Array(colWidths.length).fill(null));
     }
-    for (let i = 0; i < cellColors.length; i++) {
+    for (var i = 0; i < cellColors.length; i++) {
         while (cellColors[i].length < colWidths.length) {
             cellColors[i].push(null);
         }
@@ -253,32 +242,36 @@ function restoreState(state) {
 
 function isCellMerged(row, col) {
     if (!validateCellAccess(row, col)) return null;
-    for (let m of merges) {
-        if (row >= m.r && row < m.r + m.rowspan && col >= m.c && col < m.c + m.colspan) {
-            return m;
+    for (var m = 0; m < merges.length; m++) {
+        var merge = merges[m];
+        if (row >= merge.r && row < merge.r + merge.rowspan && col >= merge.c && col < merge.c + merge.colspan) {
+            return merge;
         }
     }
     return null;
 }
 
 function applyFilterAndSort() {
-    let rows = [...Array(gridData.length).keys()];
+    var rows = [];
+    for (var i = 0; i < gridData.length; i++) {
+        rows.push(i);
+    }
     if (activeFilter) {
-        rows = rows.filter(rowIdx => {
-            let val = getCellRawValue(rowIdx, activeFilter.colIndex);
+        rows = rows.filter(function(rowIdx) {
+            var val = getCellRawValue(rowIdx, activeFilter.colIndex);
             if (!val && val !== 0) return false;
             return val.toString().toLowerCase().includes(activeFilter.condition.toLowerCase());
         });
     }
     if (activeSort) {
-        rows.sort((a,b) => {
-            let valA = getCellRawValue(a, activeSort.col);
-            let valB = getCellRawValue(b, activeSort.col);
+        rows.sort(function(a, b) {
+            var valA = getCellRawValue(a, activeSort.col);
+            var valB = getCellRawValue(b, activeSort.col);
             if (typeof valA === 'number' && typeof valB === 'number') {
                 return activeSort.dir === 'asc' ? valA - valB : valB - valA;
             }
-            let strA = String(valA || '').toLowerCase();
-            let strB = String(valB || '').toLowerCase();
+            var strA = String(valA || '').toLowerCase();
+            var strB = String(valB || '').toLowerCase();
             return activeSort.dir === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
         });
     }
@@ -288,25 +281,23 @@ function applyFilterAndSort() {
 function getCellRawValue(row, col) {
     if (!validateCellAccess(row, col)) return '';
     if (!gridData[row] || !gridData[row][col]) return '';
-    let cell = gridData[row][col];
+    var cell = gridData[row][col];
     if (cell.type === 'checkbox') return cell.value ? 'true' : 'false';
     return cell.value;
 }
 
-function updateCellValue(row, col, newValue, newType = null) {
+function updateCellValue(row, col, newValue, newType) {
+    if (newType === undefined) newType = null;
     if (!validateCellAccess(row, col)) return;
     
-    let old = gridData[row][col];
-    let type = newType || old.type;
-    let align = old.align || 'left';
-    let value = newValue;
+    var old = gridData[row][col];
+    var type = newType || old.type;
+    var align = old.align || 'left';
+    var value = newValue;
     
-    // تطهير النص إذا كان من نوع text
     if (type === 'text' || type === 'link') {
         if (typeof value === 'string') {
-            // التحقق من صحة النص
             if (!isValidText(value)) {
-                // تجاهل المدخلات الضارة
                 return;
             }
             value = sanitizeText(value);
@@ -322,23 +313,21 @@ function updateCellValue(row, col, newValue, newType = null) {
     renderSheet();
 }
 
-// Minimize column - like Resize Col but for minimizing
 function minimizeColumn() {
     if (selectedCol === undefined || selectedCol < 0) {
         return;
     }
     if (!validateCellAccess(0, selectedCol)) return;
     
-    let currentWidth = colWidths[selectedCol];
-    let newW = prompt('Minimize column width (pixels):', currentWidth);
+    var currentWidth = colWidths[selectedCol];
+    var newW = prompt('Minimize column width (pixels):', currentWidth);
     if (newW !== null && newW !== '') {
-        let parsedWidth = parseInt(newW);
+        var parsedWidth = parseInt(newW);
         if (isNaN(parsedWidth) || parsedWidth < 10) {
             return;
         }
-        // Apply to all columns in selection range
-        let { minCol, maxCol } = getSelectedRange();
-        for (let c = minCol; c <= maxCol; c++) {
+        var range = getSelectedRange();
+        for (var c = range.minCol; c <= range.maxCol; c++) {
             if (c >= 0 && c < colWidths.length) {
                 colWidths[c] = parsedWidth;
             }
@@ -348,11 +337,10 @@ function minimizeColumn() {
     }
 }
 
-// Apply cell background color to ALL selected cells
 function applyCellColor(color) {
-    let { minRow, maxRow, minCol, maxCol } = getSelectedRange();
-    for (let r = minRow; r <= maxRow; r++) {
-        for (let c = minCol; c <= maxCol; c++) {
+    var range = getSelectedRange();
+    for (var r = range.minRow; r <= range.maxRow; r++) {
+        for (var c = range.minCol; c <= range.maxCol; c++) {
             if (validateCellAccess(r, c) && gridData[r] && gridData[r][c]) {
                 if (!cellColors[r][c]) {
                     cellColors[r][c] = { bg: null, text: null };
@@ -366,11 +354,10 @@ function applyCellColor(color) {
     updateStatus();
 }
 
-// Apply text color to ALL selected cells
 function applyTextColor(color) {
-    let { minRow, maxRow, minCol, maxCol } = getSelectedRange();
-    for (let r = minRow; r <= maxRow; r++) {
-        for (let c = minCol; c <= maxCol; c++) {
+    var range = getSelectedRange();
+    for (var r = range.minRow; r <= range.maxRow; r++) {
+        for (var c = range.minCol; c <= range.maxCol; c++) {
             if (validateCellAccess(r, c) && gridData[r] && gridData[r][c]) {
                 if (!cellColors[r][c]) {
                     cellColors[r][c] = { bg: null, text: null };
@@ -384,11 +371,10 @@ function applyTextColor(color) {
     updateStatus();
 }
 
-// Clear colors from selected cells
 function clearSelectedColors() {
-    let { minRow, maxRow, minCol, maxCol } = getSelectedRange();
-    for (let r = minRow; r <= maxRow; r++) {
-        for (let c = minCol; c <= maxCol; c++) {
+    var range = getSelectedRange();
+    for (var r = range.minRow; r <= range.maxRow; r++) {
+        for (var c = range.minCol; c <= range.maxCol; c++) {
             if (validateCellAccess(r, c) && gridData[r] && gridData[r][c] && cellColors[r][c]) {
                 cellColors[r][c] = null;
             }
@@ -408,49 +394,48 @@ function getCellColor(row, col) {
 }
 
 function getCellBgColor(row, col) {
-    let color = getCellColor(row, col);
+    var color = getCellColor(row, col);
     return color ? color.bg : null;
 }
 
 function getCellTextColor(row, col) {
-    let color = getCellColor(row, col);
+    var color = getCellColor(row, col);
     return color ? color.text : null;
 }
 
-// Merge function with warning
 function mergeSelected() {
     if (selectedRow === undefined || selectedCol === undefined) {
         return;
     }
     if (!validateCellAccess(selectedRow, selectedCol)) return;
     
-    let minRow = Math.min(selectedRow, selectionEndRow);
-    let maxRow = Math.max(selectedRow, selectionEndRow);
-    let minCol = Math.min(selectedCol, selectionEndCol);
-    let maxCol = Math.max(selectedCol, selectionEndCol);
+    var minRow = Math.min(selectedRow, selectionEndRow);
+    var maxRow = Math.max(selectedRow, selectionEndRow);
+    var minCol = Math.min(selectedCol, selectionEndCol);
+    var maxCol = Math.max(selectedCol, selectionEndCol);
 
     if (minRow === maxRow && minCol === maxCol) {
         return;
     }
 
-    let confirmMerge = confirm("⚠️ Warning: Merging cells will keep only the content of the top-left cell. All other data in the selected range will be lost. Do you want to continue?");
+    var confirmMerge = confirm("Warning: Merging cells will keep only the content of the top-left cell. All other data in the selected range will be lost. Do you want to continue?");
     if (!confirmMerge) return;
 
-    merges = merges.filter(m => {
-        let mEndRow = m.r + m.rowspan - 1;
-        let mEndCol = m.c + m.colspan - 1;
+    merges = merges.filter(function(m) {
+        var mEndRow = m.r + m.rowspan - 1;
+        var mEndCol = m.c + m.colspan - 1;
         return !(m.r <= maxRow && mEndRow >= minRow && m.c <= maxCol && mEndCol >= minCol);
     });
 
     merges.push({ r: minRow, c: minCol, rowspan: maxRow - minRow + 1, colspan: maxCol - minCol + 1 });
-    let mainValue = gridData[minRow][minCol].value;
-    let mainType = gridData[minRow][minCol].type;
-    let mainAlign = gridData[minRow][minCol].align;
-    let mainColors = cellColors[minRow] && cellColors[minRow][minCol] ?
+    var mainValue = gridData[minRow][minCol].value;
+    var mainType = gridData[minRow][minCol].type;
+    var mainAlign = gridData[minRow][minCol].align;
+    var mainColors = cellColors[minRow] && cellColors[minRow][minCol] ?
         JSON.parse(JSON.stringify(cellColors[minRow][minCol])) : null;
 
-    for (let r = minRow; r <= maxRow; r++) {
-        for (let c = minCol; c <= maxCol; c++) {
+    for (var r = minRow; r <= maxRow; r++) {
+        for (var c = minCol; c <= maxCol; c++) {
             if (!(r === minRow && c === minCol)) {
                 gridData[r][c] = { value: '', type: 'text', align: 'left' };
                 cellColors[r][c] = null;
@@ -471,23 +456,24 @@ function unmergeSelected() {
     }
     if (!validateCellAccess(selectedRow, selectedCol)) return;
     
-    let foundMerge = null;
-    for (let m of merges) {
-        if (selectedRow >= m.r && selectedRow < m.r + m.rowspan &&
-            selectedCol >= m.c && selectedCol < m.c + m.colspan) {
-            foundMerge = m;
+    var foundMerge = null;
+    for (var m = 0; m < merges.length; m++) {
+        var merge = merges[m];
+        if (selectedRow >= merge.r && selectedRow < merge.r + merge.rowspan &&
+            selectedCol >= merge.c && selectedCol < merge.c + merge.colspan) {
+            foundMerge = merge;
             break;
         }
     }
     if (foundMerge) {
-        merges = merges.filter(m => m !== foundMerge);
-        let mainValue = gridData[foundMerge.r][foundMerge.c].value;
-        let mainType = gridData[foundMerge.r][foundMerge.c].type;
-        let mainColors = cellColors[foundMerge.r] && cellColors[foundMerge.r][foundMerge.c] ?
+        merges = merges.filter(function(m) { return m !== foundMerge; });
+        var mainValue = gridData[foundMerge.r][foundMerge.c].value;
+        var mainType = gridData[foundMerge.r][foundMerge.c].type;
+        var mainColors = cellColors[foundMerge.r] && cellColors[foundMerge.r][foundMerge.c] ?
             JSON.parse(JSON.stringify(cellColors[foundMerge.r][foundMerge.c])) : null;
 
-        for (let r = foundMerge.r; r < foundMerge.r + foundMerge.rowspan; r++) {
-            for (let c = foundMerge.c; c < foundMerge.c + foundMerge.colspan; c++) {
+        for (var r = foundMerge.r; r < foundMerge.r + foundMerge.rowspan; r++) {
+            for (var c = foundMerge.c; c < foundMerge.c + foundMerge.colspan; c++) {
                 if (r === foundMerge.r && c === foundMerge.c) {
                     gridData[r][c] = { value: mainValue, type: mainType, align: 'left' };
                     cellColors[r][c] = mainColors;
@@ -503,17 +489,17 @@ function unmergeSelected() {
 }
 
 function getSelectedRange() {
-    let minRow = Math.max(0, Math.min(selectedRow, selectionEndRow));
-    let maxRow = Math.min(gridData.length - 1, Math.max(selectedRow, selectionEndRow));
-    let minCol = Math.max(0, Math.min(selectedCol, selectionEndCol));
-    let maxCol = Math.min(colWidths.length - 1, Math.max(selectedCol, selectionEndCol));
-    return { minRow, maxRow, minCol, maxCol };
+    var minRow = Math.max(0, Math.min(selectedRow, selectionEndRow));
+    var maxRow = Math.min(gridData.length - 1, Math.max(selectedRow, selectionEndRow));
+    var minCol = Math.max(0, Math.min(selectedCol, selectionEndCol));
+    var maxCol = Math.min(colWidths.length - 1, Math.max(selectedCol, selectionEndCol));
+    return { minRow: minRow, maxRow: maxRow, minCol: minCol, maxCol: maxCol };
 }
 
 function applyToSelectedRange(callback) {
-    let { minRow, maxRow, minCol, maxCol } = getSelectedRange();
-    for (let r = minRow; r <= maxRow; r++) {
-        for (let c = minCol; c <= maxCol; c++) {
+    var range = getSelectedRange();
+    for (var r = range.minRow; r <= range.maxRow; r++) {
+        for (var c = range.minCol; c <= range.maxCol; c++) {
             if (validateCellAccess(r, c) && gridData[r] && gridData[r][c]) {
                 callback(r, c);
             }
@@ -524,12 +510,14 @@ function applyToSelectedRange(callback) {
 }
 
 function setAlignment(align) {
-    applyToSelectedRange((r,c) => gridData[r][c].align = align);
+    applyToSelectedRange(function(r, c) {
+        gridData[r][c].align = align;
+    });
 }
 
 function deleteContent() {
     if (confirm("Delete content of selected cells? This cannot be undone.")) {
-        applyToSelectedRange((r,c) => {
+        applyToSelectedRange(function(r, c) {
             gridData[r][c].value = '';
             gridData[r][c].type = 'text';
             cellColors[r][c] = null;
@@ -538,11 +526,11 @@ function deleteContent() {
 }
 
 function copySelection() {
-    let { minRow, maxRow, minCol, maxCol } = getSelectedRange();
+    var range = getSelectedRange();
     clipboardData = [];
-    for (let r = minRow; r <= maxRow; r++) {
-        let rowData = [];
-        for (let c = minCol; c <= maxCol; c++) {
+    for (var r = range.minRow; r <= range.maxRow; r++) {
+        var rowData = [];
+        for (var c = range.minCol; c <= range.maxCol; c++) {
             rowData.push({
                 cell: JSON.parse(JSON.stringify(gridData[r][c])),
                 colors: cellColors[r] && cellColors[r][c] ?
@@ -562,12 +550,12 @@ function pasteSelection() {
     if (!clipboardData) {
         return;
     }
-    let { minRow, minCol } = getSelectedRange();
-    for (let i = 0; i < clipboardData.length && minRow + i < gridData.length; i++) {
-        for (let j = 0; j < clipboardData[0].length && minCol + j < colWidths.length; j++) {
-            let pasteItem = clipboardData[i][j];
-            gridData[minRow + i][minCol + j] = JSON.parse(JSON.stringify(pasteItem.cell));
-            cellColors[minRow + i][minCol + j] = pasteItem.colors ?
+    var range = getSelectedRange();
+    for (var i = 0; i < clipboardData.length && range.minRow + i < gridData.length; i++) {
+        for (var j = 0; j < clipboardData[0].length && range.minCol + j < colWidths.length; j++) {
+            var pasteItem = clipboardData[i][j];
+            gridData[range.minRow + i][range.minCol + j] = JSON.parse(JSON.stringify(pasteItem.cell));
+            cellColors[range.minRow + i][range.minCol + j] = pasteItem.colors ?
                 JSON.parse(JSON.stringify(pasteItem.colors)) : null;
         }
     }
@@ -579,9 +567,9 @@ function addRow() {
     if (gridData.length >= MAX_ROWS) {
         return;
     }
-    let newRow = [];
-    let newColorRow = [];
-    for (let j = 0; j < colWidths.length; j++) {
+    var newRow = [];
+    var newColorRow = [];
+    for (var j = 0; j < colWidths.length; j++) {
         newRow.push({ value: '', type: 'text', align: 'left' });
         newColorRow.push(null);
     }
@@ -596,7 +584,7 @@ function addColumn() {
     if (colWidths.length >= MAX_COLS) {
         return;
     }
-    for (let i = 0; i < gridData.length; i++) {
+    for (var i = 0; i < gridData.length; i++) {
         gridData[i].push({ value: '', type: 'text', align: 'left' });
         cellColors[i].push(null);
     }
@@ -610,10 +598,10 @@ function deleteRow() {
         return;
     }
     if (confirm("Delete selected row? This action cannot be undone.")) {
-        let { minRow } = getSelectedRange();
-        gridData.splice(minRow, 1);
-        cellColors.splice(minRow, 1);
-        rowHeights.splice(minRow, 1);
+        var range = getSelectedRange();
+        gridData.splice(range.minRow, 1);
+        cellColors.splice(range.minRow, 1);
+        rowHeights.splice(range.minRow, 1);
         if (selectedRow >= gridData.length) selectedRow = gridData.length - 1;
         if (selectionEndRow >= gridData.length) selectionEndRow = gridData.length - 1;
         saveToHistory();
@@ -626,12 +614,12 @@ function deleteColumn() {
         return;
     }
     if (confirm("Delete selected column? This action cannot be undone.")) {
-        let { minCol } = getSelectedRange();
-        for (let i = 0; i < gridData.length; i++) {
-            gridData[i].splice(minCol, 1);
-            cellColors[i].splice(minCol, 1);
+        var range = getSelectedRange();
+        for (var i = 0; i < gridData.length; i++) {
+            gridData[i].splice(range.minCol, 1);
+            cellColors[i].splice(range.minCol, 1);
         }
-        colWidths.splice(minCol, 1);
+        colWidths.splice(range.minCol, 1);
         if (selectedCol >= colWidths.length) selectedCol = colWidths.length - 1;
         if (selectionEndCol >= colWidths.length) selectionEndCol = colWidths.length - 1;
         saveToHistory();
@@ -640,33 +628,33 @@ function deleteColumn() {
 }
 
 function duplicateRow() {
-    let { minRow } = getSelectedRange();
-    let newRow = JSON.parse(JSON.stringify(gridData[minRow]));
-    let newColorRow = JSON.parse(JSON.stringify(cellColors[minRow]));
-    gridData.splice(minRow + 1, 0, newRow);
-    cellColors.splice(minRow + 1, 0, newColorRow);
-    rowHeights.splice(minRow + 1, 0, rowHeights[minRow]);
+    var range = getSelectedRange();
+    var newRow = JSON.parse(JSON.stringify(gridData[range.minRow]));
+    var newColorRow = JSON.parse(JSON.stringify(cellColors[range.minRow]));
+    gridData.splice(range.minRow + 1, 0, newRow);
+    cellColors.splice(range.minRow + 1, 0, newColorRow);
+    rowHeights.splice(range.minRow + 1, 0, rowHeights[range.minRow]);
     saveToHistory();
     renderSheet();
 }
 
 function duplicateColumn() {
-    let { minCol } = getSelectedRange();
-    for (let i = 0; i < gridData.length; i++) {
-        gridData[i].splice(minCol + 1, 0, JSON.parse(JSON.stringify(gridData[i][minCol])));
-        cellColors[i].splice(minCol + 1, 0, cellColors[i][minCol] ?
-            JSON.parse(JSON.stringify(cellColors[i][minCol])) : null);
+    var range = getSelectedRange();
+    for (var i = 0; i < gridData.length; i++) {
+        gridData[i].splice(range.minCol + 1, 0, JSON.parse(JSON.stringify(gridData[i][range.minCol])));
+        cellColors[i].splice(range.minCol + 1, 0, cellColors[i][range.minCol] ?
+            JSON.parse(JSON.stringify(cellColors[i][range.minCol])) : null);
     }
-    colWidths.splice(minCol + 1, 0, colWidths[minCol]);
+    colWidths.splice(range.minCol + 1, 0, colWidths[range.minCol]);
     saveToHistory();
     renderSheet();
 }
 
 function resizeRow() {
     if (!validateCellAccess(selectedRow, 0)) return;
-    let newH = prompt('Row height (pixels):', rowHeights[selectedRow]);
+    var newH = prompt('Row height (pixels):', rowHeights[selectedRow]);
     if (newH) {
-        let parsedHeight = parseInt(newH);
+        var parsedHeight = parseInt(newH);
         if (parsedHeight > 0 && parsedHeight < 500) {
             rowHeights[selectedRow] = parsedHeight;
             renderSheet();
@@ -677,9 +665,9 @@ function resizeRow() {
 
 function resizeColumn() {
     if (!validateCellAccess(0, selectedCol)) return;
-    let newW = prompt('Column width (pixels):', colWidths[selectedCol]);
+    var newW = prompt('Column width (pixels):', colWidths[selectedCol]);
     if (newW) {
-        let parsedWidth = parseInt(newW);
+        var parsedWidth = parseInt(newW);
         if (parsedWidth > 20 && parsedWidth < 500) {
             colWidths[selectedCol] = parsedWidth;
             renderSheet();
@@ -700,9 +688,8 @@ function sortColumn(dir) {
 }
 
 function filterColumn() {
-    let cond = prompt('Filter text (cells containing):', '');
+    var cond = prompt('Filter text (cells containing):', '');
     if (cond !== null && cond !== '') {
-        // تطهير النص
         cond = sanitizeText(cond);
         if (merges.length > 0 && !confirm("Filtering will clear all merged cells. Continue?")) return;
         activeFilter = { colIndex: selectedCol, condition: cond };
@@ -726,32 +713,34 @@ function clearFilter() {
 }
 
 function updateStatus() {
-    document.getElementById('filterStatus').innerHTML = activeFilter ? `<span class="filter-badge">Filter: ${activeFilter.condition}</span>` : '';
-    let { minRow, maxRow, minCol, maxCol } = getSelectedRange();
-    let colLetter = String.fromCharCode(65 + (selectedCol % 26));
+    document.getElementById('filterStatus').innerHTML = activeFilter ? '<span class="filter-badge">Filter: ' + activeFilter.condition + '</span>' : '';
+    var range = getSelectedRange();
+    var colLetter = String.fromCharCode(65 + (selectedCol % 26));
     if (selectedCol >= 26) colLetter = String.fromCharCode(64 + Math.floor(selectedCol / 26)) + colLetter;
-    document.getElementById('cellCoord').innerHTML = `Cell: ${colLetter}${selectedRow + 1}`;
-    if (minRow !== maxRow || minCol !== maxCol) {
-        let count = (maxRow - minRow + 1) * (maxCol - minCol + 1);
-        document.getElementById('selectionRange').innerHTML = `Selected: ${count} cells`;
+    document.getElementById('cellCoord').innerHTML = 'Cell: ' + colLetter + (selectedRow + 1);
+    if (range.minRow !== range.maxRow || range.minCol !== range.maxCol) {
+        var count = (range.maxRow - range.minRow + 1) * (range.maxCol - range.minCol + 1);
+        document.getElementById('selectionRange').innerHTML = 'Selected: ' + count + ' cells';
     } else {
         document.getElementById('selectionRange').innerHTML = '';
     }
 
-    // Show color info
-    let cellColor = getCellBgColor(selectedRow, selectedCol);
-    let textColor = getCellTextColor(selectedRow, selectedCol);
-    let colorInfoText = '';
-    if (cellColor) colorInfoText += `BG: ${cellColor} `;
-    if (textColor) colorInfoText += `Text: ${textColor}`;
+    var cellColor = getCellBgColor(selectedRow, selectedCol);
+    var textColor = getCellTextColor(selectedRow, selectedCol);
+    var colorInfoText = '';
+    if (cellColor) colorInfoText += 'BG: ' + cellColor + ' ';
+    if (textColor) colorInfoText += 'Text: ' + textColor;
     document.getElementById('colorInfo').innerHTML = colorInfoText;
 
-    let totalCells = gridData.length * colWidths.length;
-    document.getElementById('performanceHint').innerHTML = `${gridData.length}x${colWidths.length} (${totalCells} cells)`;
+    var totalCells = gridData.length * colWidths.length;
+    document.getElementById('performanceHint').innerHTML = gridData.length + 'x' + colWidths.length + ' (' + totalCells + ' cells)';
 }
 
-function insertIntoSelected(type, defaultValue = '') {
-    let { minRow, minCol } = getSelectedRange();
+function insertIntoSelected(type, defaultValue) {
+    if (defaultValue === undefined) defaultValue = '';
+    var range = getSelectedRange();
+    var minRow = range.minRow;
+    var minCol = range.minCol;
     if (!validateCellAccess(minRow, minCol)) return;
     
     if (type === 'checkbox') {
@@ -759,27 +748,25 @@ function insertIntoSelected(type, defaultValue = '') {
     } else if (type === 'date') {
         gridData[minRow][minCol] = { value: new Date().toISOString().slice(0, 10), type: 'date', align: 'left' };
     } else if (type === 'number') {
-        let val = prompt('Enter a number:', '0');
+        var val = prompt('Enter a number:', '0');
         if (val !== null) {
-            let num = parseFloat(val);
+            var num = parseFloat(val);
             if (!isNaN(num)) {
                 gridData[minRow][minCol] = { value: num, type: 'number', align: 'left' };
             }
         }
     } else if (type === 'link') {
-        let url = prompt('Enter link (URL):', 'https://');
+        var url = prompt('Enter link (URL):', 'https://');
         if (url) {
-            // التحقق من صحة الرابط
             if (isValidText(url)) {
-                let sanitizedUrl = sanitizeText(url);
-                // التحقق من أن الرابط آمن (ليس javascript: أو بيانات ضارة)
+                var sanitizedUrl = sanitizeText(url);
                 if (!/^javascript:/i.test(sanitizedUrl) && !/^data:/i.test(sanitizedUrl)) {
                     gridData[minRow][minCol] = { value: sanitizedUrl, type: 'link', align: 'left' };
                 }
             }
         }
     } else {
-        let val = prompt('Enter text:', '');
+        var val = prompt('Enter text:', '');
         if (val !== null) {
             if (isValidText(val)) {
                 gridData[minRow][minCol] = { value: sanitizeText(val), type: 'text', align: 'left' };
@@ -791,22 +778,24 @@ function insertIntoSelected(type, defaultValue = '') {
 }
 
 function searchText() {
-    let query = prompt('Search for:', '');
+    var query = prompt('Search for:', '');
     if (!query) return;
     query = sanitizeText(query);
-    let results = [];
-    for (let r = 0; r < gridData.length; r++) {
-        for (let c = 0; c < colWidths.length; c++) {
-            let val = gridData[r][c].value;
+    var results = [];
+    for (var r = 0; r < gridData.length; r++) {
+        for (var c = 0; c < colWidths.length; c++) {
+            var val = gridData[r][c].value;
             if (val && val.toString().toLowerCase().includes(query.toLowerCase())) {
                 results.push([r, c]);
             }
         }
     }
     if (results.length) {
-        let [r, c] = results[0];
-        selectedRow = r; selectedCol = c;
-        selectionEndRow = r; selectionEndCol = c;
+        var result = results[0];
+        selectedRow = result[0];
+        selectedCol = result[1];
+        selectionEndRow = result[0];
+        selectionEndCol = result[1];
         renderSheet();
     }
 }
@@ -828,29 +817,27 @@ function toggleRowNumbering() {
 }
 
 function exportRETB() {
-    let exportData = {
+    var exportData = {
         version: 'RESTUDIO_TABLE_V2',
         grid: gridData,
-        rowHeights,
-        colWidths,
-        merges,
+        rowHeights: rowHeights,
+        colWidths: colWidths,
+        merges: merges,
         cellColors: cellColors
     };
-    let blob = new Blob([JSON.stringify(exportData)], { type: 'application/json' });
-    let a = document.createElement('a');
+    var blob = new Blob([JSON.stringify(exportData)], { type: 'application/json' });
+    var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `table_${new Date().toISOString().slice(0,19)}.retb`;
+    a.download = 'table_' + new Date().toISOString().slice(0,19) + '.retb';
     a.click();
     URL.revokeObjectURL(blob);
 }
 
 function importRETB(file) {
-    let reader = new FileReader();
-    reader.onload = e => {
+    var reader = new FileReader();
+    reader.onload = function(e) {
         try {
-            let data = JSON.parse(e.target.result);
-            
-            // التحقق من صحة الملف
+            var data = JSON.parse(e.target.result);
             validateRETBFile(data);
             
             if (data.grid) gridData = data.grid;
@@ -861,14 +848,14 @@ function importRETB(file) {
                 cellColors = data.cellColors;
             } else {
                 cellColors = [];
-                for (let i = 0; i < gridData.length; i++) {
+                for (var i = 0; i < gridData.length; i++) {
                     cellColors[i] = new Array(colWidths.length).fill(null);
                 }
             }
             while (cellColors.length < gridData.length) {
                 cellColors.push(new Array(colWidths.length).fill(null));
             }
-            for (let i = 0; i < cellColors.length; i++) {
+            for (var i = 0; i < cellColors.length; i++) {
                 while (cellColors[i].length < colWidths.length) {
                     cellColors[i].push(null);
                 }
@@ -877,39 +864,43 @@ function importRETB(file) {
             saveToHistory();
         } catch(err) {
             console.error('Import error:', err.message);
-            alert(`❌ Import failed: ${err.message}`);
+            alert('Import failed: ' + err.message);
         }
     };
     reader.readAsText(file);
 }
 
 function newTable() {
-    let hasData = gridData.some(row => row.some(cell => cell.value !== '' && cell.value !== null && cell.value !== false));
+    var hasData = gridData.some(function(row) {
+        return row.some(function(cell) {
+            return cell.value !== '' && cell.value !== null && cell.value !== false;
+        });
+    });
     if (hasData && !confirm("Create a new table? All current data will be lost.")) return;
-    let rows = parseInt(prompt(`Number of rows (max ${MAX_ROWS}):`, DEFAULT_ROWS) || DEFAULT_ROWS);
-    let cols = parseInt(prompt(`Number of columns (max ${MAX_COLS}):`, DEFAULT_COLS) || DEFAULT_COLS);
+    var rows = parseInt(prompt('Number of rows (max ' + MAX_ROWS + '):', DEFAULT_ROWS) || DEFAULT_ROWS);
+    var cols = parseInt(prompt('Number of columns (max ' + MAX_COLS + '):', DEFAULT_COLS) || DEFAULT_COLS);
     if (rows > MAX_ROWS) rows = MAX_ROWS;
     if (cols > MAX_COLS) cols = MAX_COLS;
     resetTable(rows, cols);
 }
 
 function renderSheet() {
-    const table = document.getElementById('spreadsheet');
+    var table = document.getElementById('spreadsheet');
     table.innerHTML = '';
-    let filteredRows = applyFilterAndSort();
-    const thead = document.createElement('thead');
-    let headerRow = document.createElement('tr');
+    var filteredRows = applyFilterAndSort();
+    var thead = document.createElement('thead');
+    var headerRow = document.createElement('tr');
 
     if (rowNumberingEnabled) {
-        let th = document.createElement('th');
+        var th = document.createElement('th');
         th.innerText = '#';
         th.classList.add('row-header');
         th.style.width = '50px';
         headerRow.appendChild(th);
     }
-    for (let c = 0; c < colWidths.length; c++) {
-        let th = document.createElement('th');
-        let colLetter = String.fromCharCode(65 + (c % 26));
+    for (var c = 0; c < colWidths.length; c++) {
+        var th = document.createElement('th');
+        var colLetter = String.fromCharCode(65 + (c % 26));
         if (c >= 26) colLetter = String.fromCharCode(64 + Math.floor(c / 26)) + colLetter;
         th.innerText = colLetter;
         th.style.width = colWidths[c] + 'px';
@@ -919,14 +910,14 @@ function renderSheet() {
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
-    const tbody = document.createElement('tbody');
-    for (let idx = 0; idx < filteredRows.length; idx++) {
-        let r = filteredRows[idx];
-        let tr = document.createElement('tr');
+    var tbody = document.createElement('tbody');
+    for (var idx = 0; idx < filteredRows.length; idx++) {
+        var r = filteredRows[idx];
+        var tr = document.createElement('tr');
         tr.style.height = rowHeights[r] + 'px';
 
         if (rowNumberingEnabled) {
-            let tdNum = document.createElement('td');
+            var tdNum = document.createElement('td');
             tdNum.innerText = r + 1;
             tdNum.classList.add('row-header');
             tdNum.style.backgroundColor = '#252525';
@@ -935,30 +926,28 @@ function renderSheet() {
             tr.appendChild(tdNum);
         }
 
-        for (let c = 0; c < colWidths.length; c++) {
-            let merge = isCellMerged(r, c);
+        for (var c = 0; c < colWidths.length; c++) {
+            var merge = isCellMerged(r, c);
             if (merge && !(merge.r === r && merge.c === c)) continue;
-            let td = document.createElement('td');
+            var td = document.createElement('td');
             if (merge) {
                 if (merge.rowspan > 1) td.rowSpan = merge.rowspan;
                 if (merge.colspan > 1) td.colSpan = merge.colspan;
             }
             td.setAttribute('data-row', r);
             td.setAttribute('data-col', c);
-            let cell = gridData[r][c];
+            var cell = gridData[r][c];
             td.style.textAlign = cell.align || 'left';
             if (wordWrapEnabled) td.style.whiteSpace = 'normal';
             else td.style.whiteSpace = 'nowrap';
 
-            // Check if this cell is selected
-            let isSelected = (r >= Math.min(selectedRow, selectionEndRow) &&
+            var isSelected = (r >= Math.min(selectedRow, selectionEndRow) &&
                               r <= Math.max(selectedRow, selectionEndRow) &&
                               c >= Math.min(selectedCol, selectionEndCol) &&
                               c <= Math.max(selectedCol, selectionEndCol));
 
-            // Apply cell background color
-            let cellBgColor = getCellBgColor(r, c);
-            let cellTextColor = getCellTextColor(r, c);
+            var cellBgColor = getCellBgColor(r, c);
+            var cellTextColor = getCellTextColor(r, c);
 
             if (isSelected) {
                 if (cellBgColor) {
@@ -981,21 +970,23 @@ function renderSheet() {
 
             if (cell.type === 'checkbox') {
                 td.classList.add('checkbox-cell');
-                let chk = document.createElement('input');
+                var chk = document.createElement('input');
                 chk.type = 'checkbox';
                 chk.checked = cell.value === true || cell.value === 'true';
-                chk.addEventListener('change', (e) => {
-                    e.stopPropagation();
-                    updateCellValue(r, c, chk.checked, 'checkbox');
-                });
+                chk.addEventListener('change', function(r, c) {
+                    return function(e) {
+                        e.stopPropagation();
+                        updateCellValue(r, c, this.checked, 'checkbox');
+                    };
+                }(r, c));
                 td.appendChild(chk);
             } else if (cell.type === 'link') {
                 td.classList.add('link-cell');
-                let link = document.createElement('a');
+                var link = document.createElement('a');
                 link.href = cell.value || '#';
                 link.target = '_blank';
                 link.innerText = cell.value || 'Link';
-                link.onclick = (e) => e.stopPropagation();
+                link.onclick = function(e) { e.stopPropagation(); };
                 if (cellTextColor) {
                     link.style.color = cellTextColor;
                 }
@@ -1014,55 +1005,75 @@ function renderSheet() {
 }
 
 function attachCellEvents() {
-    document.querySelectorAll('#spreadsheet tbody td').forEach(td => {
-        let row = parseInt(td.getAttribute('data-row'));
-        let col = parseInt(td.getAttribute('data-col'));
-        if (isNaN(row) || !validateCellAccess(row, col)) return;
-        td.onmousedown = (e) => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'A') return;
-            e.preventDefault();
-            selectedRow = row;
-            selectedCol = col;
-            selectionEndRow = row;
-            selectionEndCol = col;
-            isSelecting = true;
-            renderSheet();
-            updateStatus();
-        };
-        td.onmouseenter = () => {
-            if (isSelecting && validateCellAccess(row, col)) {
-                selectionEndRow = row;
-                selectionEndCol = col;
-                renderSheet();
-                updateStatus();
-            }
-        };
-        td.ondblclick = (e) => {
-            if (gridData[row][col].type === 'checkbox') return;
-            let currVal = gridData[row][col].value;
-            let newVal = prompt('Edit cell value:', currVal);
-            if (newVal !== null) {
-                if (isValidText(newVal)) {
-                    updateCellValue(row, col, sanitizeText(newVal), gridData[row][col].type);
-                }
-            }
-        };
-    });
-    document.body.onmouseup = () => { isSelecting = false; updateStatus(); };
-    document.querySelectorAll('#spreadsheet th').forEach(th => {
-        let col = parseInt(th.getAttribute('data-col'));
-        if (!isNaN(col) && col >= 0 && col < colWidths.length) {
-            th.onclick = (e) => {
-                e.stopPropagation();
-                selectedRow = 0;
-                selectedCol = col;
-                selectionEndRow = gridData.length - 1;
-                selectionEndCol = col;
+    var cells = document.querySelectorAll('#spreadsheet tbody td');
+    for (var i = 0; i < cells.length; i++) {
+        var td = cells[i];
+        var row = parseInt(td.getAttribute('data-row'));
+        var col = parseInt(td.getAttribute('data-col'));
+        if (isNaN(row) || !validateCellAccess(row, col)) continue;
+        
+        td.onmousedown = function(r, c) {
+            return function(e) {
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'A') return;
+                e.preventDefault();
+                selectedRow = r;
+                selectedCol = c;
+                selectionEndRow = r;
+                selectionEndCol = c;
+                isSelecting = true;
                 renderSheet();
                 updateStatus();
             };
+        }(row, col);
+        
+        td.onmouseenter = function(r, c) {
+            return function() {
+                if (isSelecting && validateCellAccess(r, c)) {
+                    selectionEndRow = r;
+                    selectionEndCol = c;
+                    renderSheet();
+                    updateStatus();
+                }
+            };
+        }(row, col);
+        
+        td.ondblclick = function(r, c) {
+            return function(e) {
+                if (gridData[r][c].type === 'checkbox') return;
+                var currVal = gridData[r][c].value;
+                var newVal = prompt('Edit cell value:', currVal);
+                if (newVal !== null) {
+                    if (isValidText(newVal)) {
+                        updateCellValue(r, c, sanitizeText(newVal), gridData[r][c].type);
+                    }
+                }
+            };
+        }(row, col);
+    }
+    
+    document.body.onmouseup = function() {
+        isSelecting = false;
+        updateStatus();
+    };
+    
+    var headers = document.querySelectorAll('#spreadsheet th');
+    for (var i = 0; i < headers.length; i++) {
+        var th = headers[i];
+        var col = parseInt(th.getAttribute('data-col'));
+        if (!isNaN(col) && col >= 0 && col < colWidths.length) {
+            th.onclick = function(c) {
+                return function(e) {
+                    e.stopPropagation();
+                    selectedRow = 0;
+                    selectedCol = c;
+                    selectionEndRow = gridData.length - 1;
+                    selectionEndCol = c;
+                    renderSheet();
+                    updateStatus();
+                };
+            }(col);
         }
-    });
+    }
 }
 
 function init() {
@@ -1099,20 +1110,20 @@ function init() {
     document.getElementById('resizeRowBtn').onclick = resizeRow;
     document.getElementById('resizeColBtn').onclick = resizeColumn;
     document.getElementById('minimizeColBtn').onclick = minimizeColumn;
-    document.getElementById('sortAscBtn').onclick = () => sortColumn('asc');
-    document.getElementById('sortDescBtn').onclick = () => sortColumn('desc');
+    document.getElementById('sortAscBtn').onclick = function() { sortColumn('asc'); };
+    document.getElementById('sortDescBtn').onclick = function() { sortColumn('desc'); };
     document.getElementById('filterBtn').onclick = filterColumn;
     document.getElementById('clearFilterBtn').onclick = clearFilter;
     document.getElementById('mergeCellsBtn').onclick = mergeSelected;
     document.getElementById('unmergeCellsBtn').onclick = unmergeSelected;
-    document.getElementById('alignLeftBtn').onclick = () => setAlignment('left');
-    document.getElementById('alignCenterBtn').onclick = () => setAlignment('center');
-    document.getElementById('alignRightBtn').onclick = () => setAlignment('right');
-    document.getElementById('insertTextBtn').onclick = () => insertIntoSelected('text');
-    document.getElementById('insertNumberBtn').onclick = () => insertIntoSelected('number');
-    document.getElementById('insertCheckboxBtn').onclick = () => insertIntoSelected('checkbox');
-    document.getElementById('insertDateBtn').onclick = () => insertIntoSelected('date');
-    document.getElementById('insertLinkBtn').onclick = () => insertIntoSelected('link');
+    document.getElementById('alignLeftBtn').onclick = function() { setAlignment('left'); };
+    document.getElementById('alignCenterBtn').onclick = function() { setAlignment('center'); };
+    document.getElementById('alignRightBtn').onclick = function() { setAlignment('right'); };
+    document.getElementById('insertTextBtn').onclick = function() { insertIntoSelected('text'); };
+    document.getElementById('insertNumberBtn').onclick = function() { insertIntoSelected('number'); };
+    document.getElementById('insertCheckboxBtn').onclick = function() { insertIntoSelected('checkbox'); };
+    document.getElementById('insertDateBtn').onclick = function() { insertIntoSelected('date'); };
+    document.getElementById('insertLinkBtn').onclick = function() { insertIntoSelected('link'); };
     document.getElementById('fullscreenBtn').onclick = toggleFullscreen;
     document.getElementById('exitFullscreenBtn').onclick = toggleFullscreen;
     document.getElementById('searchBtn').onclick = searchText;
@@ -1142,20 +1153,45 @@ function init() {
         document.getElementById('textColorPicker').click();
     };
 
-    // Clear Colors Button
     document.getElementById('clearColorBtn').onclick = clearSelectedColors;
 
-    let importInput = document.createElement('input');
+    var importInput = document.createElement('input');
     importInput.type = 'file';
     importInput.accept = '.retb';
     importInput.style.display = 'none';
     document.body.appendChild(importInput);
-    importInput.onchange = () => { if(importInput.files[0]) importRETB(importInput.files[0]); importInput.value = ''; };
-    let fakeImportBtn = document.createElement('button');
+    importInput.onchange = function() {
+        if (this.files[0]) importRETB(this.files[0]);
+        this.value = '';
+    };
+    var fakeImportBtn = document.createElement('button');
     fakeImportBtn.className = 'tool-btn';
     fakeImportBtn.innerHTML = '<i class="ti ti-upload"></i> Import .RETB';
-    fakeImportBtn.onclick = () => importInput.click();
+    fakeImportBtn.onclick = function() { importInput.click(); };
     document.querySelector('.tool-group:first-child').appendChild(fakeImportBtn);
+
+    // ============ KEYBOARD SHORTCUTS ============
+    document.addEventListener('keydown', function(e) {
+        // Ctrl + Z - Undo
+        if (e.ctrlKey && e.key === 'z') {
+            e.preventDefault();
+            undo();
+        }
+        // Ctrl + Y - Redo
+        else if (e.ctrlKey && e.key === 'y') {
+            e.preventDefault();
+            redo();
+        }
+        // Delete key - Delete content
+        else if (e.key === 'Delete' && document.activeElement === document.body) {
+            e.preventDefault();
+            deleteContent();
+        }
+        // Escape - Exit fullscreen
+        else if (e.key === 'Escape' && document.body.classList.contains('fullscreen')) {
+            toggleFullscreen();
+        }
+    });
 }
 
 init();
