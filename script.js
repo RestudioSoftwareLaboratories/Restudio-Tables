@@ -1,11 +1,10 @@
 // ========== SECURITY UTILITIES ==========
 
-// 1. Sanitization - منع هجمات XSS
 function sanitizeText(text) {
     if (text === null || text === undefined) return '';
     if (typeof text !== 'string') return String(text);
     
-    const map = {
+    var map = {
         '&': '&amp;',
         '<': '&lt;',
         '>': '&gt;',
@@ -20,10 +19,9 @@ function sanitizeText(text) {
     });
 }
 
-// التحقق من صحة النص (منع الأكواد الضارة)
 function isValidText(text) {
     if (typeof text !== 'string') return false;
-    const dangerousPatterns = [
+    var dangerousPatterns = [
         /javascript:/i,
         /on\w+\s*=/i,
         /<script/i,
@@ -33,60 +31,61 @@ function isValidText(text) {
         /data:text\/html/i,
         /vbscript:/i
     ];
-    return !dangerousPatterns.some(pattern => pattern.test(text));
+    for (var i = 0; i < dangerousPatterns.length; i++) {
+        if (dangerousPatterns[i].test(text)) return false;
+    }
+    return true;
 }
 
-// 2. التحقق من صحة الملفات المستوردة
 function validateRETBFile(data) {
     if (!data || typeof data !== 'object') {
         throw new Error('Invalid file format: Data is not an object');
     }
     
-    const MAX_FILE_SIZE_MB = 10;
-    const jsonString = JSON.stringify(data);
-    const sizeInMB = new Blob([jsonString]).size / (1024 * 1024);
+    var MAX_FILE_SIZE_MB = 10;
+    var jsonString = JSON.stringify(data);
+    var sizeInMB = new Blob([jsonString]).size / (1024 * 1024);
     if (sizeInMB > MAX_FILE_SIZE_MB) {
         throw new Error('File too large: ' + sizeInMB.toFixed(2) + 'MB (max ' + MAX_FILE_SIZE_MB + 'MB)');
     }
     
-    if (!data.grid || !Array.isArray(data.grid)) {
-        throw new Error('Invalid file: Missing or invalid grid data');
+    if (data.grid && !Array.isArray(data.grid)) {
+        throw new Error('Invalid file: Grid must be an array');
     }
     
-    const MAX_ROWS_FILE = 1000;
-    const MAX_COLS_FILE = 100;
-    if (data.grid.length > MAX_ROWS_FILE) {
+    var MAX_ROWS_FILE = 1000;
+    var MAX_COLS_FILE = 100;
+    if (data.grid && data.grid.length > MAX_ROWS_FILE) {
         throw new Error('Too many rows: ' + data.grid.length + ' (max ' + MAX_ROWS_FILE + ')');
     }
-    if (data.grid.length > 0 && data.grid[0].length > MAX_COLS_FILE) {
+    if (data.grid && data.grid.length > 0 && data.grid[0].length > MAX_COLS_FILE) {
         throw new Error('Too many columns: ' + data.grid[0].length + ' (max ' + MAX_COLS_FILE + ')');
     }
     
-    for (var r = 0; r < data.grid.length; r++) {
-        if (!Array.isArray(data.grid[r])) {
-            throw new Error('Invalid row ' + r + ': Not an array');
-        }
-        for (var c = 0; c < data.grid[r].length; c++) {
-            var cell = data.grid[r][c];
-            if (!cell || typeof cell !== 'object') {
-                throw new Error('Invalid cell at [' + r + '][' + c + ']: Not an object');
+    if (data.grid) {
+        for (var r = 0; r < data.grid.length; r++) {
+            if (!Array.isArray(data.grid[r])) {
+                throw new Error('Invalid row ' + r + ': Not an array');
             }
-            if (cell.value !== undefined && typeof cell.value === 'string') {
-                data.grid[r][c].value = sanitizeText(cell.value);
-                if (!isValidText(cell.value)) {
-                    throw new Error('Suspicious content detected in cell [' + r + '][' + c + ']');
+            for (var c = 0; c < data.grid[r].length; c++) {
+                var cell = data.grid[r][c];
+                if (!cell || typeof cell !== 'object') {
+                    throw new Error('Invalid cell at [' + r + '][' + c + ']: Not an object');
                 }
-            }
-            var allowedTypes = ['text', 'number', 'checkbox', 'date', 'link'];
-            if (cell.type && allowedTypes.indexOf(cell.type) === -1) {
-                throw new Error('Invalid cell type at [' + r + '][' + c + ']: ' + cell.type);
+                if (cell.value !== undefined && typeof cell.value === 'string') {
+                    if (!isValidText(cell.value)) {
+                        throw new Error('Suspicious content detected in cell [' + r + '][' + c + ']');
+                    }
+                    data.grid[r][c].value = sanitizeText(cell.value);
+                }
+                var allowedTypes = ['text', 'number', 'checkbox', 'date', 'link'];
+                if (cell.type && allowedTypes.indexOf(cell.type) === -1) {
+                    throw new Error('Invalid cell type at [' + r + '][' + c + ']: ' + cell.type);
+                }
             }
         }
     }
     
-    if (data.colWidths && !Array.isArray(data.colWidths)) {
-        throw new Error('Invalid colWidths: Not an array');
-    }
     if (data.colWidths) {
         for (var w = 0; w < data.colWidths.length; w++) {
             if (typeof data.colWidths[w] !== 'number' || data.colWidths[w] < 20 || data.colWidths[w] > 500) {
@@ -98,31 +97,9 @@ function validateRETBFile(data) {
     return true;
 }
 
-// 3. التحقق من الحدود (Boundary Checking)
 function validateCellAccess(row, col) {
-    if (row < 0 || row >= gridData.length) {
-        console.warn('Invalid row access: ' + row);
-        return false;
-    }
-    if (col < 0 || col >= colWidths.length) {
-        console.warn('Invalid column access: ' + col);
-        return false;
-    }
-    return true;
-}
-
-function getCellSafe(row, col) {
-    if (!validateCellAccess(row, col)) {
-        return null;
-    }
-    return gridData[row][col];
-}
-
-function setCellSafe(row, col, value) {
-    if (!validateCellAccess(row, col)) {
-        return false;
-    }
-    gridData[row][col] = value;
+    if (row < 0 || row >= gridData.length) return false;
+    if (col < 0 || col >= colWidths.length) return false;
     return true;
 }
 
@@ -135,13 +112,10 @@ var activeFilter = null;
 var activeSort = null;
 var rowNumberingEnabled = true;
 var wordWrapEnabled = false;
-
 var cellColors = [];
-
 var selectedRow = 0, selectedCol = 0;
 var selectionEndRow = 0, selectionEndCol = 0;
 var isSelecting = false;
-
 var historyStack = [];
 var historyIndex = -1;
 var clipboardData = null;
@@ -156,10 +130,10 @@ var MAX_COLS = 80;
 function initEmptyGrid(rows, cols) {
     var newGrid = [];
     var newColors = [];
-    for(var i=0; i<rows; i++) {
+    for (var i = 0; i < rows; i++) {
         newGrid[i] = [];
         newColors[i] = [];
-        for(var j=0; j<cols; j++) {
+        for (var j = 0; j < cols; j++) {
             newGrid[i][j] = { value: '', type: 'text', align: 'left' };
             newColors[i][j] = null;
         }
@@ -168,8 +142,8 @@ function initEmptyGrid(rows, cols) {
 }
 
 function resetTable(rows, cols) {
-    if (rows === undefined) rows = DEFAULT_ROWS;
-    if (cols === undefined) cols = DEFAULT_COLS;
+    rows = rows || DEFAULT_ROWS;
+    cols = cols || DEFAULT_COLS;
     rows = Math.min(rows, MAX_ROWS);
     cols = Math.min(cols, MAX_COLS);
     if (rows < 1) rows = 1;
@@ -253,14 +227,12 @@ function isCellMerged(row, col) {
 
 function applyFilterAndSort() {
     var rows = [];
-    for (var i = 0; i < gridData.length; i++) {
-        rows.push(i);
-    }
+    for (var i = 0; i < gridData.length; i++) rows.push(i);
     if (activeFilter) {
         rows = rows.filter(function(rowIdx) {
             var val = getCellRawValue(rowIdx, activeFilter.colIndex);
             if (!val && val !== 0) return false;
-            return val.toString().toLowerCase().includes(activeFilter.condition.toLowerCase());
+            return val.toString().toLowerCase().indexOf(activeFilter.condition.toLowerCase()) !== -1;
         });
     }
     if (activeSort) {
@@ -287,50 +259,35 @@ function getCellRawValue(row, col) {
 }
 
 function updateCellValue(row, col, newValue, newType) {
-    if (newType === undefined) newType = null;
     if (!validateCellAccess(row, col)) return;
-    
     var old = gridData[row][col];
     var type = newType || old.type;
     var align = old.align || 'left';
     var value = newValue;
-    
     if (type === 'text' || type === 'link') {
         if (typeof value === 'string') {
-            if (!isValidText(value)) {
-                return;
-            }
+            if (!isValidText(value)) return;
             value = sanitizeText(value);
         }
     }
-    
     if (type === 'number' && !isNaN(parseFloat(newValue))) {
         value = parseFloat(newValue);
     }
-    
     gridData[row][col] = { value: value, type: type, align: align };
     saveToHistory();
     renderSheet();
 }
 
 function minimizeColumn() {
-    if (selectedCol === undefined || selectedCol < 0) {
-        return;
-    }
-    if (!validateCellAccess(0, selectedCol)) return;
-    
+    if (selectedCol === undefined || selectedCol < 0 || !validateCellAccess(0, selectedCol)) return;
     var currentWidth = colWidths[selectedCol];
     var newW = prompt('Minimize column width (pixels):', currentWidth);
     if (newW !== null && newW !== '') {
         var parsedWidth = parseInt(newW);
-        if (isNaN(parsedWidth) || parsedWidth < 10) {
-            return;
-        }
+        if (isNaN(parsedWidth) || parsedWidth < 10) return;
         var range = getSelectedRange();
         for (var c = range.minCol; c <= range.maxCol; c++) {
-            if (c >= 0 && c < colWidths.length) {
-                colWidths[c] = parsedWidth;
-            }
+            if (c >= 0 && c < colWidths.length) colWidths[c] = parsedWidth;
         }
         saveToHistory();
         renderSheet();
@@ -342,9 +299,7 @@ function applyCellColor(color) {
     for (var r = range.minRow; r <= range.maxRow; r++) {
         for (var c = range.minCol; c <= range.maxCol; c++) {
             if (validateCellAccess(r, c) && gridData[r] && gridData[r][c]) {
-                if (!cellColors[r][c]) {
-                    cellColors[r][c] = { bg: null, text: null };
-                }
+                if (!cellColors[r][c]) cellColors[r][c] = { bg: null, text: null };
                 cellColors[r][c].bg = color;
             }
         }
@@ -359,9 +314,7 @@ function applyTextColor(color) {
     for (var r = range.minRow; r <= range.maxRow; r++) {
         for (var c = range.minCol; c <= range.maxCol; c++) {
             if (validateCellAccess(r, c) && gridData[r] && gridData[r][c]) {
-                if (!cellColors[r][c]) {
-                    cellColors[r][c] = { bg: null, text: null };
-                }
+                if (!cellColors[r][c]) cellColors[r][c] = { bg: null, text: null };
                 cellColors[r][c].text = color;
             }
         }
@@ -387,9 +340,7 @@ function clearSelectedColors() {
 
 function getCellColor(row, col) {
     if (!validateCellAccess(row, col)) return null;
-    if (cellColors[row] && cellColors[row][col]) {
-        return cellColors[row][col];
-    }
+    if (cellColors[row] && cellColors[row][col]) return cellColors[row][col];
     return null;
 }
 
@@ -404,22 +355,13 @@ function getCellTextColor(row, col) {
 }
 
 function mergeSelected() {
-    if (selectedRow === undefined || selectedCol === undefined) {
-        return;
-    }
-    if (!validateCellAccess(selectedRow, selectedCol)) return;
-    
+    if (selectedRow === undefined || selectedCol === undefined || !validateCellAccess(selectedRow, selectedCol)) return;
     var minRow = Math.min(selectedRow, selectionEndRow);
     var maxRow = Math.max(selectedRow, selectionEndRow);
     var minCol = Math.min(selectedCol, selectionEndCol);
     var maxCol = Math.max(selectedCol, selectionEndCol);
-
-    if (minRow === maxRow && minCol === maxCol) {
-        return;
-    }
-
-    var confirmMerge = confirm("Warning: Merging cells will keep only the content of the top-left cell. All other data in the selected range will be lost. Do you want to continue?");
-    if (!confirmMerge) return;
+    if (minRow === maxRow && minCol === maxCol) return;
+    if (!confirm("Warning: Merging cells will keep only the content of the top-left cell. All other data in the selected range will be lost. Do you want to continue?")) return;
 
     merges = merges.filter(function(m) {
         var mEndRow = m.r + m.rowspan - 1;
@@ -431,8 +373,7 @@ function mergeSelected() {
     var mainValue = gridData[minRow][minCol].value;
     var mainType = gridData[minRow][minCol].type;
     var mainAlign = gridData[minRow][minCol].align;
-    var mainColors = cellColors[minRow] && cellColors[minRow][minCol] ?
-        JSON.parse(JSON.stringify(cellColors[minRow][minCol])) : null;
+    var mainColors = cellColors[minRow] && cellColors[minRow][minCol] ? JSON.parse(JSON.stringify(cellColors[minRow][minCol])) : null;
 
     for (var r = minRow; r <= maxRow; r++) {
         for (var c = minCol; c <= maxCol; c++) {
@@ -444,18 +385,13 @@ function mergeSelected() {
     }
     gridData[minRow][minCol] = { value: mainValue, type: mainType, align: mainAlign };
     cellColors[minRow][minCol] = mainColors;
-
     saveToHistory();
     renderSheet();
     updateStatus();
 }
 
 function unmergeSelected() {
-    if (selectedRow === undefined || selectedCol === undefined) {
-        return;
-    }
-    if (!validateCellAccess(selectedRow, selectedCol)) return;
-    
+    if (selectedRow === undefined || selectedCol === undefined || !validateCellAccess(selectedRow, selectedCol)) return;
     var foundMerge = null;
     for (var m = 0; m < merges.length; m++) {
         var merge = merges[m];
@@ -469,8 +405,7 @@ function unmergeSelected() {
         merges = merges.filter(function(m) { return m !== foundMerge; });
         var mainValue = gridData[foundMerge.r][foundMerge.c].value;
         var mainType = gridData[foundMerge.r][foundMerge.c].type;
-        var mainColors = cellColors[foundMerge.r] && cellColors[foundMerge.r][foundMerge.c] ?
-            JSON.parse(JSON.stringify(cellColors[foundMerge.r][foundMerge.c])) : null;
+        var mainColors = cellColors[foundMerge.r] && cellColors[foundMerge.r][foundMerge.c] ? JSON.parse(JSON.stringify(cellColors[foundMerge.r][foundMerge.c])) : null;
 
         for (var r = foundMerge.r; r < foundMerge.r + foundMerge.rowspan; r++) {
             for (var c = foundMerge.c; c < foundMerge.c + foundMerge.colspan; c++) {
@@ -500,9 +435,7 @@ function applyToSelectedRange(callback) {
     var range = getSelectedRange();
     for (var r = range.minRow; r <= range.maxRow; r++) {
         for (var c = range.minCol; c <= range.maxCol; c++) {
-            if (validateCellAccess(r, c) && gridData[r] && gridData[r][c]) {
-                callback(r, c);
-            }
+            if (validateCellAccess(r, c) && gridData[r] && gridData[r][c]) callback(r, c);
         }
     }
     saveToHistory();
@@ -510,9 +443,7 @@ function applyToSelectedRange(callback) {
 }
 
 function setAlignment(align) {
-    applyToSelectedRange(function(r, c) {
-        gridData[r][c].align = align;
-    });
+    applyToSelectedRange(function(r, c) { gridData[r][c].align = align; });
 }
 
 function deleteContent() {
@@ -533,30 +464,23 @@ function copySelection() {
         for (var c = range.minCol; c <= range.maxCol; c++) {
             rowData.push({
                 cell: JSON.parse(JSON.stringify(gridData[r][c])),
-                colors: cellColors[r] && cellColors[r][c] ?
-                    JSON.parse(JSON.stringify(cellColors[r][c])) : null
+                colors: cellColors[r] && cellColors[r][c] ? JSON.parse(JSON.stringify(cellColors[r][c])) : null
             });
         }
         clipboardData.push(rowData);
     }
 }
 
-function cutSelection() {
-    copySelection();
-    deleteContent();
-}
+function cutSelection() { copySelection(); deleteContent(); }
 
 function pasteSelection() {
-    if (!clipboardData) {
-        return;
-    }
+    if (!clipboardData) return;
     var range = getSelectedRange();
     for (var i = 0; i < clipboardData.length && range.minRow + i < gridData.length; i++) {
         for (var j = 0; j < clipboardData[0].length && range.minCol + j < colWidths.length; j++) {
             var pasteItem = clipboardData[i][j];
             gridData[range.minRow + i][range.minCol + j] = JSON.parse(JSON.stringify(pasteItem.cell));
-            cellColors[range.minRow + i][range.minCol + j] = pasteItem.colors ?
-                JSON.parse(JSON.stringify(pasteItem.colors)) : null;
+            cellColors[range.minRow + i][range.minCol + j] = pasteItem.colors ? JSON.parse(JSON.stringify(pasteItem.colors)) : null;
         }
     }
     saveToHistory();
@@ -564,11 +488,8 @@ function pasteSelection() {
 }
 
 function addRow() {
-    if (gridData.length >= MAX_ROWS) {
-        return;
-    }
-    var newRow = [];
-    var newColorRow = [];
+    if (gridData.length >= MAX_ROWS) return;
+    var newRow = [], newColorRow = [];
     for (var j = 0; j < colWidths.length; j++) {
         newRow.push({ value: '', type: 'text', align: 'left' });
         newColorRow.push(null);
@@ -581,9 +502,7 @@ function addRow() {
 }
 
 function addColumn() {
-    if (colWidths.length >= MAX_COLS) {
-        return;
-    }
+    if (colWidths.length >= MAX_COLS) return;
     for (var i = 0; i < gridData.length; i++) {
         gridData[i].push({ value: '', type: 'text', align: 'left' });
         cellColors[i].push(null);
@@ -594,9 +513,7 @@ function addColumn() {
 }
 
 function deleteRow() {
-    if (gridData.length <= 1) {
-        return;
-    }
+    if (gridData.length <= 1) return;
     if (confirm("Delete selected row? This action cannot be undone.")) {
         var range = getSelectedRange();
         gridData.splice(range.minRow, 1);
@@ -610,9 +527,7 @@ function deleteRow() {
 }
 
 function deleteColumn() {
-    if (colWidths.length <= 1) {
-        return;
-    }
+    if (colWidths.length <= 1) return;
     if (confirm("Delete selected column? This action cannot be undone.")) {
         var range = getSelectedRange();
         for (var i = 0; i < gridData.length; i++) {
@@ -642,8 +557,7 @@ function duplicateColumn() {
     var range = getSelectedRange();
     for (var i = 0; i < gridData.length; i++) {
         gridData[i].splice(range.minCol + 1, 0, JSON.parse(JSON.stringify(gridData[i][range.minCol])));
-        cellColors[i].splice(range.minCol + 1, 0, cellColors[i][range.minCol] ?
-            JSON.parse(JSON.stringify(cellColors[i][range.minCol])) : null);
+        cellColors[i].splice(range.minCol + 1, 0, cellColors[i][range.minCol] ? JSON.parse(JSON.stringify(cellColors[i][range.minCol])) : null);
     }
     colWidths.splice(range.minCol + 1, 0, colWidths[range.minCol]);
     saveToHistory();
@@ -678,7 +592,7 @@ function resizeColumn() {
 
 function sortColumn(dir) {
     if (selectedCol !== undefined && validateCellAccess(0, selectedCol)) {
-        if (merges.length > 0 && !confirm("Sorting will clear all merged cells due to technical limitations. Continue?")) return;
+        if (merges.length > 0 && !confirm("Sorting will clear all merged cells. Continue?")) return;
         activeSort = { col: selectedCol, dir: dir };
         activeFilter = null;
         if (merges.length > 0) merges = [];
@@ -704,9 +618,7 @@ function filterColumn() {
 function clearFilter() {
     activeFilter = null;
     activeSort = null;
-    if (merges.length > 0) {
-        merges = [];
-    }
+    if (merges.length > 0) merges = [];
     renderSheet();
     updateStatus();
     saveToHistory();
@@ -724,53 +636,38 @@ function updateStatus() {
     } else {
         document.getElementById('selectionRange').innerHTML = '';
     }
-
     var cellColor = getCellBgColor(selectedRow, selectedCol);
     var textColor = getCellTextColor(selectedRow, selectedCol);
     var colorInfoText = '';
     if (cellColor) colorInfoText += 'BG: ' + cellColor + ' ';
     if (textColor) colorInfoText += 'Text: ' + textColor;
     document.getElementById('colorInfo').innerHTML = colorInfoText;
-
     var totalCells = gridData.length * colWidths.length;
     document.getElementById('performanceHint').innerHTML = gridData.length + 'x' + colWidths.length + ' (' + totalCells + ' cells)';
 }
 
-function insertIntoSelected(type, defaultValue) {
-    if (defaultValue === undefined) defaultValue = '';
+function insertIntoSelected(type) {
     var range = getSelectedRange();
-    var minRow = range.minRow;
-    var minCol = range.minCol;
-    if (!validateCellAccess(minRow, minCol)) return;
-    
+    if (!validateCellAccess(range.minRow, range.minCol)) return;
     if (type === 'checkbox') {
-        gridData[minRow][minCol] = { value: false, type: 'checkbox', align: 'left' };
+        gridData[range.minRow][range.minCol] = { value: false, type: 'checkbox', align: 'left' };
     } else if (type === 'date') {
-        gridData[minRow][minCol] = { value: new Date().toISOString().slice(0, 10), type: 'date', align: 'left' };
+        gridData[range.minRow][range.minCol] = { value: new Date().toISOString().slice(0, 10), type: 'date', align: 'left' };
     } else if (type === 'number') {
         var val = prompt('Enter a number:', '0');
         if (val !== null) {
             var num = parseFloat(val);
-            if (!isNaN(num)) {
-                gridData[minRow][minCol] = { value: num, type: 'number', align: 'left' };
-            }
+            if (!isNaN(num)) gridData[range.minRow][range.minCol] = { value: num, type: 'number', align: 'left' };
         }
     } else if (type === 'link') {
         var url = prompt('Enter link (URL):', 'https://');
-        if (url) {
-            if (isValidText(url)) {
-                var sanitizedUrl = sanitizeText(url);
-                if (!/^javascript:/i.test(sanitizedUrl) && !/^data:/i.test(sanitizedUrl)) {
-                    gridData[minRow][minCol] = { value: sanitizedUrl, type: 'link', align: 'left' };
-                }
-            }
+        if (url && isValidText(url) && !/^javascript:/i.test(url) && !/^data:/i.test(url)) {
+            gridData[range.minRow][range.minCol] = { value: sanitizeText(url), type: 'link', align: 'left' };
         }
     } else {
         var val = prompt('Enter text:', '');
-        if (val !== null) {
-            if (isValidText(val)) {
-                gridData[minRow][minCol] = { value: sanitizeText(val), type: 'text', align: 'left' };
-            }
+        if (val !== null && isValidText(val)) {
+            gridData[range.minRow][range.minCol] = { value: sanitizeText(val), type: 'text', align: 'left' };
         }
     }
     saveToHistory();
@@ -785,50 +682,27 @@ function searchText() {
     for (var r = 0; r < gridData.length; r++) {
         for (var c = 0; c < colWidths.length; c++) {
             var val = gridData[r][c].value;
-            if (val && val.toString().toLowerCase().includes(query.toLowerCase())) {
-                results.push([r, c]);
-            }
+            if (val && val.toString().toLowerCase().indexOf(query.toLowerCase()) !== -1) results.push([r, c]);
         }
     }
     if (results.length) {
         var result = results[0];
-        selectedRow = result[0];
-        selectedCol = result[1];
-        selectionEndRow = result[0];
-        selectionEndCol = result[1];
+        selectedRow = result[0]; selectedCol = result[1];
+        selectionEndRow = result[0]; selectionEndCol = result[1];
         renderSheet();
     }
 }
 
-function toggleFullscreen() {
-    document.body.classList.toggle('fullscreen');
-}
-
-function toggleWordWrap() {
-    wordWrapEnabled = !wordWrapEnabled;
-    renderSheet();
-    document.getElementById('wordWrapBtn').classList.toggle('active', wordWrapEnabled);
-}
-
-function toggleRowNumbering() {
-    rowNumberingEnabled = !rowNumberingEnabled;
-    renderSheet();
-    document.getElementById('rowNumberingBtn').classList.toggle('active', rowNumberingEnabled);
-}
+function toggleFullscreen() { document.body.classList.toggle('fullscreen'); }
+function toggleWordWrap() { wordWrapEnabled = !wordWrapEnabled; renderSheet(); document.getElementById('wordWrapBtn').classList.toggle('active', wordWrapEnabled); }
+function toggleRowNumbering() { rowNumberingEnabled = !rowNumberingEnabled; renderSheet(); document.getElementById('rowNumberingBtn').classList.toggle('active', rowNumberingEnabled); }
 
 function exportRETB() {
-    var exportData = {
-        version: 'RESTUDIO_TABLE_V2',
-        grid: gridData,
-        rowHeights: rowHeights,
-        colWidths: colWidths,
-        merges: merges,
-        cellColors: cellColors
-    };
+    var exportData = { version: 'RESTUDIO_TABLE_V2', grid: gridData, rowHeights: rowHeights, colWidths: colWidths, merges: merges, cellColors: cellColors };
     var blob = new Blob([JSON.stringify(exportData)], { type: 'application/json' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'table_' + new Date().toISOString().slice(0,19) + '.retb';
+    a.download = 'table_' + new Date().toISOString().slice(0, 19) + '.retb';
     a.click();
     URL.revokeObjectURL(blob);
 }
@@ -839,7 +713,6 @@ function importRETB(file) {
         try {
             var data = JSON.parse(e.target.result);
             validateRETBFile(data);
-            
             if (data.grid) gridData = data.grid;
             if (data.rowHeights) rowHeights = data.rowHeights;
             if (data.colWidths) colWidths = data.colWidths;
@@ -848,22 +721,15 @@ function importRETB(file) {
                 cellColors = data.cellColors;
             } else {
                 cellColors = [];
-                for (var i = 0; i < gridData.length; i++) {
-                    cellColors[i] = new Array(colWidths.length).fill(null);
-                }
+                for (var i = 0; i < gridData.length; i++) cellColors[i] = new Array(colWidths.length).fill(null);
             }
-            while (cellColors.length < gridData.length) {
-                cellColors.push(new Array(colWidths.length).fill(null));
-            }
+            while (cellColors.length < gridData.length) cellColors.push(new Array(colWidths.length).fill(null));
             for (var i = 0; i < cellColors.length; i++) {
-                while (cellColors[i].length < colWidths.length) {
-                    cellColors[i].push(null);
-                }
+                while (cellColors[i].length < colWidths.length) cellColors[i].push(null);
             }
             renderSheet();
             saveToHistory();
-        } catch(err) {
-            console.error('Import error:', err.message);
+        } catch (err) {
             alert('Import failed: ' + err.message);
         }
     };
@@ -871,11 +737,7 @@ function importRETB(file) {
 }
 
 function newTable() {
-    var hasData = gridData.some(function(row) {
-        return row.some(function(cell) {
-            return cell.value !== '' && cell.value !== null && cell.value !== false;
-        });
-    });
+    var hasData = gridData.some(function(row) { return row.some(function(cell) { return cell.value !== '' && cell.value !== null && cell.value !== false; }); });
     if (hasData && !confirm("Create a new table? All current data will be lost.")) return;
     var rows = parseInt(prompt('Number of rows (max ' + MAX_ROWS + '):', DEFAULT_ROWS) || DEFAULT_ROWS);
     var cols = parseInt(prompt('Number of columns (max ' + MAX_COLS + '):', DEFAULT_COLS) || DEFAULT_COLS);
@@ -976,7 +838,7 @@ function renderSheet() {
                 chk.addEventListener('change', function(r, c) {
                     return function(e) {
                         e.stopPropagation();
-                        updateCellValue(r, c, this.checked, 'checkbox');
+                        updateCellValue(r, c, chk.checked, 'checkbox');
                     };
                 }(r, c));
                 td.appendChild(chk);
@@ -987,14 +849,11 @@ function renderSheet() {
                 link.target = '_blank';
                 link.innerText = cell.value || 'Link';
                 link.onclick = function(e) { e.stopPropagation(); };
-                if (cellTextColor) {
-                    link.style.color = cellTextColor;
-                }
+                if (cellTextColor) link.style.color = cellTextColor;
                 td.appendChild(link);
             } else {
                 td.innerText = cell.value !== undefined && cell.value !== null ? cell.value : '';
             }
-
             tr.appendChild(td);
         }
         tbody.appendChild(tr);
@@ -1005,69 +864,54 @@ function renderSheet() {
 }
 
 function attachCellEvents() {
-    var cells = document.querySelectorAll('#spreadsheet tbody td');
-    for (var i = 0; i < cells.length; i++) {
-        var td = cells[i];
+    var tds = document.querySelectorAll('#spreadsheet tbody td');
+    for (var i = 0; i < tds.length; i++) {
+        var td = tds[i];
         var row = parseInt(td.getAttribute('data-row'));
         var col = parseInt(td.getAttribute('data-col'));
         if (isNaN(row) || !validateCellAccess(row, col)) continue;
-        
         td.onmousedown = function(r, c) {
             return function(e) {
                 if (e.target.tagName === 'INPUT' || e.target.tagName === 'A') return;
                 e.preventDefault();
-                selectedRow = r;
-                selectedCol = c;
-                selectionEndRow = r;
-                selectionEndCol = c;
+                selectedRow = r; selectedCol = c;
+                selectionEndRow = r; selectionEndCol = c;
                 isSelecting = true;
                 renderSheet();
                 updateStatus();
             };
         }(row, col);
-        
         td.onmouseenter = function(r, c) {
             return function() {
                 if (isSelecting && validateCellAccess(r, c)) {
-                    selectionEndRow = r;
-                    selectionEndCol = c;
+                    selectionEndRow = r; selectionEndCol = c;
                     renderSheet();
                     updateStatus();
                 }
             };
         }(row, col);
-        
         td.ondblclick = function(r, c) {
             return function(e) {
                 if (gridData[r][c].type === 'checkbox') return;
                 var currVal = gridData[r][c].value;
                 var newVal = prompt('Edit cell value:', currVal);
-                if (newVal !== null) {
-                    if (isValidText(newVal)) {
-                        updateCellValue(r, c, sanitizeText(newVal), gridData[r][c].type);
-                    }
+                if (newVal !== null && isValidText(newVal)) {
+                    updateCellValue(r, c, sanitizeText(newVal), gridData[r][c].type);
                 }
             };
         }(row, col);
     }
-    
-    document.body.onmouseup = function() {
-        isSelecting = false;
-        updateStatus();
-    };
-    
+    document.body.onmouseup = function() { isSelecting = false; updateStatus(); };
     var headers = document.querySelectorAll('#spreadsheet th');
-    for (var i = 0; i < headers.length; i++) {
-        var th = headers[i];
+    for (var h = 0; h < headers.length; h++) {
+        var th = headers[h];
         var col = parseInt(th.getAttribute('data-col'));
         if (!isNaN(col) && col >= 0 && col < colWidths.length) {
             th.onclick = function(c) {
                 return function(e) {
                     e.stopPropagation();
-                    selectedRow = 0;
-                    selectedCol = c;
-                    selectionEndRow = gridData.length - 1;
-                    selectionEndCol = c;
+                    selectedRow = 0; selectedCol = c;
+                    selectionEndRow = gridData.length - 1; selectionEndCol = c;
                     renderSheet();
                     updateStatus();
                 };
@@ -1076,6 +920,41 @@ function attachCellEvents() {
     }
 }
 
+// ========== KEYBOARD SHORTCUTS (المصلحة) ==========
+function setupKeyboardShortcuts() {
+    document.addEventListener('keydown', function(e) {
+        // تجاهل إذا كان التركيز على حقل إدخال نصي (لتجنب التعارض مع الكتابة)
+        var tag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+            return;
+        }
+
+        // Ctrl+Z - Undo
+        if (e.ctrlKey && e.key === 'z') {
+            e.preventDefault();
+            undo();
+            return;
+        }
+        // Ctrl+Y - Redo
+        if (e.ctrlKey && e.key === 'y') {
+            e.preventDefault();
+            redo();
+            return;
+        }
+        // Delete - Delete content
+        if (e.key === 'Delete' && !e.ctrlKey && !e.altKey) {
+            e.preventDefault();
+            deleteContent();
+            return;
+        }
+        // Escape - (اختياري)
+        if (e.key === 'Escape') {
+            // يمكن إضافة أي منطق هنا إذا لزم الأمر
+        }
+    });
+}
+
+// ========== INIT ==========
 function init() {
     resetTable(12, 7);
     gridData[0][0] = { value: 'Product', type: 'text', align: 'center' };
@@ -1092,7 +971,6 @@ function init() {
     gridData[3][2] = { value: 1.8, type: 'number', align: 'right' };
     renderSheet();
 
-    // Buttons
     document.getElementById('newTableBtn').onclick = newTable;
     document.getElementById('exportBtn').onclick = exportRETB;
     document.getElementById('undoBtn').onclick = undo;
@@ -1131,27 +1009,13 @@ function init() {
     document.getElementById('rowNumberingBtn').onclick = toggleRowNumbering;
     document.getElementById('rowNumberingBtn').classList.add('active');
 
-    // Cell Color Picker
-    document.getElementById('cellColorPicker').oninput = function() {
-        applyCellColor(this.value);
-    };
-    document.getElementById('cellColorPicker').onchange = function() {
-        applyCellColor(this.value);
-    };
-    document.getElementById('cellColorBtn').onclick = function() {
-        document.getElementById('cellColorPicker').click();
-    };
+    document.getElementById('cellColorPicker').oninput = function() { applyCellColor(this.value); };
+    document.getElementById('cellColorPicker').onchange = function() { applyCellColor(this.value); };
+    document.getElementById('cellColorBtn').onclick = function() { document.getElementById('cellColorPicker').click(); };
 
-    // Text Color Picker
-    document.getElementById('textColorPicker').oninput = function() {
-        applyTextColor(this.value);
-    };
-    document.getElementById('textColorPicker').onchange = function() {
-        applyTextColor(this.value);
-    };
-    document.getElementById('textColorBtn').onclick = function() {
-        document.getElementById('textColorPicker').click();
-    };
+    document.getElementById('textColorPicker').oninput = function() { applyTextColor(this.value); };
+    document.getElementById('textColorPicker').onchange = function() { applyTextColor(this.value); };
+    document.getElementById('textColorBtn').onclick = function() { document.getElementById('textColorPicker').click(); };
 
     document.getElementById('clearColorBtn').onclick = clearSelectedColors;
 
@@ -1160,38 +1024,15 @@ function init() {
     importInput.accept = '.retb';
     importInput.style.display = 'none';
     document.body.appendChild(importInput);
-    importInput.onchange = function() {
-        if (this.files[0]) importRETB(this.files[0]);
-        this.value = '';
-    };
+    importInput.onchange = function() { if (importInput.files[0]) importRETB(importInput.files[0]); importInput.value = ''; };
     var fakeImportBtn = document.createElement('button');
     fakeImportBtn.className = 'tool-btn';
     fakeImportBtn.innerHTML = '<i class="ti ti-upload"></i> Import .RETB';
     fakeImportBtn.onclick = function() { importInput.click(); };
     document.querySelector('.tool-group:first-child').appendChild(fakeImportBtn);
 
-    // ============ KEYBOARD SHORTCUTS ============
-    document.addEventListener('keydown', function(e) {
-        // Ctrl + Z - Undo
-        if (e.ctrlKey && e.key === 'z') {
-            e.preventDefault();
-            undo();
-        }
-        // Ctrl + Y - Redo
-        else if (e.ctrlKey && e.key === 'y') {
-            e.preventDefault();
-            redo();
-        }
-        // Delete key - Delete content
-        else if (e.key === 'Delete' && document.activeElement === document.body) {
-            e.preventDefault();
-            deleteContent();
-        }
-        // Escape - Exit fullscreen
-        else if (e.key === 'Escape' && document.body.classList.contains('fullscreen')) {
-            toggleFullscreen();
-        }
-    });
+    // إعداد الاختصارات
+    setupKeyboardShortcuts();
 }
 
 init();
